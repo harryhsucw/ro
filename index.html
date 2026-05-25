@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rolling is the cutest girl</title>
+    <style>
+        :root {
+            --primary-color: #4a90e2;
+            --accent-color: #ff6b6b;
+            --bg-color: #f5f7fb;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, "Microsoft JhengHei";
+            background-color: var(--bg-color);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            text-align: center;
+            background: white;
+            padding: 2.5rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            max-width: 450px;
+            width: 90%;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+            font-size: 1.8rem;
+        }
+
+        .subtitle {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+        }
+
+        /* 抽籤箱動畫效果 */
+        .box-container {
+            position: relative;
+            width: 160px;
+            height: 160px;
+            margin: 0 auto 2rem;
+            cursor: pointer;
+        }
+
+        .lucky-box {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #ff9f43, #ff6b6b);
+            border-radius: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 4rem;
+            color: white;
+            box-shadow: 0 8px 20px rgba(255, 107, 107, 0.4);
+            transition: transform 0.2s;
+            position: relative;
+            user-select: none;
+        }
+
+        .lucky-box::after {
+            content: "？";
+            font-weight: bold;
+        }
+
+        /* 搖晃動畫 */
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(0px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(2px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(2px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+
+        .shaking {
+            animation: shake 0.5s infinite;
+        }
+
+        .btn-draw {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.8rem 2.5rem;
+            font-size: 1.1rem;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(74, 144, 226, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .btn-draw:hover {
+            background-color: #357abd;
+            transform: translateY(-2px);
+        }
+
+        .btn-draw:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        /* 彈出視窗（Modal） */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 15px;
+            text-align: center;
+            max-width: 400px;
+            width: 85%;
+            transform: scale(0.8);
+            transition: transform 0.3s ease;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+        }
+
+        .modal-overlay.active .modal {
+            transform: scale(1);
+        }
+
+        .prize-tag {
+            font-size: 1.2rem;
+            color: var(--accent-color);
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .prize-name {
+            font-size: 1.6rem;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 1.5rem;
+            line-height: 1.4;
+        }
+
+        .btn-close {
+            background-color: #2c3e50;
+            color: white;
+            border: none;
+            padding: 0.6rem 2rem;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        .btn-close:hover {
+            background-color: #1a252f;
+        }
+
+        /* 剩餘籤數統計 */
+        .status-text {
+            margin-top: 1.5rem;
+            font-size: 0.85rem;
+            color: #95a5a6;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🎁 若若洗澡鼓勵獎</h1>
+        <div class="subtitle">總共 3 支幸運籤，點擊按鈕試試手氣吧！</div>
+
+        <div class="box-container">
+            <div class="lucky-box" id="luckyBox"></div>
+        </div>
+
+        <button class="btn-draw" id="drawBtn" onclick="drawPrize()">開始抽籤</button>
+        
+        <div class="status-text" id="statusText">目前剩餘：3 支籤</div>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div style="font-size: 3.5rem; margin-bottom: 1rem;">🎉</div>
+            <div class="prize-tag" id="modalPrizeTag">恭喜獲得</div>
+            <div class="prize-name" id="modalPrizeName">獎項名稱</div>
+            <button class="btn-close" onclick="closeModal()">太棒了</button>
+        </div>
+    </div>
+
+    <script>
+        // 初始化三支籤的獎勵池
+        let pool = [
+            { id: 1, name: "☕️ 星巴克西西里咖啡 + 🍰 蛋糕一份" },
+            { id: 2, name: "🚗 下班 Uber 免費搭乘一趟" },
+            { id: 3, name: "🎫 週五工作咖啡廳入場券乙張" }
+        ];
+
+        const luckyBox = document.getElementById('luckyBox');
+        const drawBtn = document.getElementById('drawBtn');
+        const statusText = document.getElementById('statusText');
+        const modalOverlay = document.getElementById('modalOverlay');
+        const modalPrizeName = document.getElementById('modalPrizeName');
+        const modalPrizeTag = document.getElementById('modalPrizeTag');
+
+        function drawPrize() {
+            if (pool.length === 0) return;
+
+            // 禁用按鈕防止重複點擊
+            drawBtn.disabled = true;
+            // 啟動搖晃箱子動畫
+            luckyBox.classList.add('shaking');
+
+            // 模擬抽籤中的等待感（1秒）
+            setTimeout(() => {
+                // 停止搖晃動畫
+                luckyBox.classList.remove('shaking');
+
+                // 隨機從目前的池子裡抽一支
+                const randomIndex = Math.floor(Math.random() * pool.length);
+                const winPrize = pool.splice(randomIndex, 1)[0]; // 抽出並從陣列中移除（不重複抽）
+
+                // 顯示結果到 Modal 視窗
+                modalPrizeTag.innerText = `恭喜你！抽中第 ${winPrize.id} 個獎勵`;
+                modalPrizeName.innerText = winPrize.name;
+                modalOverlay.classList.add('active');
+
+                // 更新剩餘狀態與按鈕文字
+                if (pool.length > 0) {
+                    statusText.innerText = `目前剩餘：${pool.length} 支籤`;
+                    drawBtn.innerText = "繼續抽籤";
+                    drawBtn.disabled = false;
+                } else {
+                    statusText.innerText = "⚠️ 獎品已經全部抽完囉！";
+                    drawBtn.innerText = "抽籤結束";
+                    drawBtn.disabled = true;
+                }
+            }, 1000);
+        }
+
+        function closeModal() {
+            modalOverlay.classList.remove('active');
+        }
+    </script>
+</body>
+</html>
