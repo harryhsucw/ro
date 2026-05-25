@@ -262,10 +262,21 @@
             setTimeout(() => {
                 luckyBox.classList.remove('shaking');
 
-                const randomIndex = Math.floor(Math.random() * pool.length);
+                let randomIndex;
+
+                // 【核心邏輯】如果是第一抽（池子還是滿的 6 支籤），強迫只能從後三個非實體獎勵中抽取
+                if (pool.length === 6) {
+                    // 後三支籤（應援籤）在陣列中的索引是 3, 4, 5
+                    randomIndex = Math.floor(Math.random() * 3) + 3;
+                } else {
+                    // 如果不是第一抽，就恢復完全隨機
+                    randomIndex = Math.floor(Math.random() * pool.length);
+                }
+
+                // 根據決定好的索引抽出獎項，並從池子中移除
                 const winPrize = pool.splice(randomIndex, 1)[0]; 
 
-                // 顯示結果
+                // 顯示結果 
                 modalEmoji.innerText = winPrize.emoji;
                 modalPrizeTag.innerText = `【 ${winPrize.type} 】`;
                 modalPrizeName.innerText = winPrize.name;
