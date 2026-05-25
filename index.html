@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rolling is the cutest girl</title>
+    <title>Roro so cute!</title>
     <style>
         :root {
-            --primary-color: #4a90e2;
-            --accent-color: #ff6b6b;
-            --bg-color: #f5f7fb;
+            --primary-color: #00a0e9; /* KKBOX 經典藍色調 */
+            --accent-color: #ff4757;
+            --bg-color: #f1f2f6;
         }
 
         body {
@@ -33,18 +33,18 @@
         }
 
         h1 {
-            color: #2c3e50;
+            color: #1e272e;
             margin-bottom: 0.5rem;
             font-size: 1.8rem;
         }
 
         .subtitle {
-            color: #7f8c8d;
+            color: #718093;
             font-size: 0.9rem;
             margin-bottom: 2rem;
+            line-height: 1.4;
         }
 
-        /* 抽籤箱動畫效果 */
         .box-container {
             position: relative;
             width: 160px;
@@ -74,7 +74,6 @@
             font-weight: bold;
         }
 
-        /* 搖晃動畫 */
         @keyframes shake {
             0% { transform: translate(1px, 1px) rotate(0deg); }
             10% { transform: translate(-1px, -2px) rotate(-1deg); }
@@ -102,23 +101,22 @@
             border-radius: 50px;
             cursor: pointer;
             font-weight: bold;
-            box-shadow: 0 4px 15px rgba(74, 144, 226, 0.3);
+            box-shadow: 0 4px 15px rgba(0, 160, 233, 0.3);
             transition: all 0.3s ease;
         }
 
         .btn-draw:hover {
-            background-color: #357abd;
+            background-color: #0082bc;
             transform: translateY(-2px);
         }
 
         .btn-draw:disabled {
-            background-color: #bdc3c7;
+            background-color: #cbd5e1;
             cursor: not-allowed;
             box-shadow: none;
             transform: none;
         }
 
-        /* 彈出視窗（Modal） */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -157,18 +155,32 @@
         }
 
         .prize-tag {
-            font-size: 1.2rem;
-            color: var(--accent-color);
+            font-size: 1.1rem;
+            color: var(--primary-color);
             font-weight: bold;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.8rem;
+            letter-spacing: 1px;
         }
 
         .prize-name {
-            font-size: 1.6rem;
+            font-size: 1.4rem;
             font-weight: bold;
             color: #2c3e50;
             margin-bottom: 1.5rem;
-            line-height: 1.4;
+            line-height: 1.5;
+        }
+
+        /* 提示再抽一次的樣式 */
+        .hint-text {
+            display: none;
+            background-color: #ebf8ff;
+            color: #2b6cb0;
+            padding: 0.6rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin-bottom: 1.5rem;
+            border: 1px dashed #bee3f8;
         }
 
         .btn-close {
@@ -186,11 +198,10 @@
             background-color: #1a252f;
         }
 
-        /* 剩餘籤數統計 */
         .status-text {
             margin-top: 1.5rem;
             font-size: 0.85rem;
-            color: #95a5a6;
+            color: #a0aec0;
         }
     </style>
 </head>
@@ -204,26 +215,33 @@
             <div class="lucky-box" id="luckyBox"></div>
         </div>
 
-        <button class="btn-draw" id="drawBtn" onclick="drawPrize()">開始抽籤</button>
+        <button class="btn-draw" id="drawBtn" onclick="drawPrize()">點擊抽籤</button>
         
-        <div class="status-text" id="statusText">目前剩餘：3 支籤</div>
+        <div class="status-text" id="statusText">目前剩餘：6 支籤</div>
     </div>
 
+    <!-- 結果視窗 -->
     <div class="modal-overlay" id="modalOverlay">
         <div class="modal">
-            <div style="font-size: 3.5rem; margin-bottom: 1rem;">🎉</div>
-            <div class="prize-tag" id="modalPrizeTag">恭喜獲得</div>
-            <div class="prize-name" id="modalPrizeName">獎項名稱</div>
-            <button class="btn-close" onclick="closeModal()">太棒了</button>
+            <div style="font-size: 3.5rem; margin-bottom: 1rem;" id="modalEmoji">🎉</div>
+            <div class="prize-tag" id="modalPrizeTag">抽中獎項</div>
+            <div class="prize-name" id="modalPrizeName">內容</div>
+            <!-- 提示區塊 -->
+            <div class="hint-text" id="modalHint">💡 提示：再抽一次！看看會不會抽到實體禮物🎁</div>
+            <button class="btn-close" onclick="closeModal()">收下好運</button>
         </div>
     </div>
 
     <script>
-        // 初始化三支籤的獎勵池
+        // 3個實體大獎 + 3個精選祝福籤
         let pool = [
-            { id: 1, name: "☕️ 星巴克西西里咖啡 + 🍰 蛋糕一份" },
-            { id: 2, name: "🚗 下班 Uber 免費搭乘一趟" },
-            { id: 3, name: "🎫 週五工作咖啡廳入場券乙張" }
+            { isRealPrize: true, type: "實體獎勵", name: "☕️ 星巴克西西里咖啡 + 🍰 蛋糕一份", emoji: "🎁" },
+            { isRealPrize: true, type: "實體獎勵", name: "🚗 下班 Uber 免費搭乘一趟", emoji: "🎁" },
+            { isRealPrize: true, type: "實體獎勵", name: "🎫 週五工作咖啡廳入場券乙張", emoji: "🎁" },
+            
+            { isRealPrize: false, type: "新人防護罩", name: "❤️ 適應期辛苦了！你已經表現得很棒囉！", emoji: "🛡️" },
+            { isRealPrize: false, type: "客戶乖乖籤", name: "🧘 祝你遇到的客戶都不改需求、不砍預算，順利過關！", emoji: "🛸" },
+            { isRealPrize: false, type: "下班節奏籤", name: "🏃 明天工作進度開外掛！下班時間一到快速登出辦公室！", emoji: "⚡️" }
         ];
 
         const luckyBox = document.getElementById('luckyBox');
@@ -232,37 +250,43 @@
         const modalOverlay = document.getElementById('modalOverlay');
         const modalPrizeName = document.getElementById('modalPrizeName');
         const modalPrizeTag = document.getElementById('modalPrizeTag');
+        const modalEmoji = document.getElementById('modalEmoji');
+        const modalHint = document.getElementById('modalHint');
 
         function drawPrize() {
             if (pool.length === 0) return;
 
-            // 禁用按鈕防止重複點擊
             drawBtn.disabled = true;
-            // 啟動搖晃箱子動畫
             luckyBox.classList.add('shaking');
 
-            // 模擬抽籤中的等待感（1秒）
             setTimeout(() => {
-                // 停止搖晃動畫
                 luckyBox.classList.remove('shaking');
 
-                // 隨機從目前的池子裡抽一支
                 const randomIndex = Math.floor(Math.random() * pool.length);
-                const winPrize = pool.splice(randomIndex, 1)[0]; // 抽出並從陣列中移除（不重複抽）
+                const winPrize = pool.splice(randomIndex, 1)[0]; 
 
-                // 顯示結果到 Modal 視窗
-                modalPrizeTag.innerText = `恭喜你！抽中第 ${winPrize.id} 個獎勵`;
+                // 顯示結果
+                modalEmoji.innerText = winPrize.emoji;
+                modalPrizeTag.innerText = `【 ${winPrize.type} 】`;
                 modalPrizeName.innerText = winPrize.name;
+                
+                // 檢查是否為大獎，如果不是，且池子裡還有籤，就顯示「再抽一次」的提示
+                if (!winPrize.isRealPrize && pool.length > 0) {
+                    modalHint.style.display = "block";
+                } else {
+                    modalHint.style.display = "none";
+                }
+
                 modalOverlay.classList.add('active');
 
-                // 更新剩餘狀態與按鈕文字
+                // 更新剩餘狀態
                 if (pool.length > 0) {
                     statusText.innerText = `目前剩餘：${pool.length} 支籤`;
-                    drawBtn.innerText = "繼續抽籤";
+                    drawBtn.innerText = "再抽一張";
                     drawBtn.disabled = false;
                 } else {
-                    statusText.innerText = "⚠️ 獎品已經全部抽完囉！";
-                    drawBtn.innerText = "抽籤結束";
+                    statusText.innerText = "⚠️ 所有的籤都被抽完囉！業務人生正式起飛！";
+                    drawBtn.innerText = "抽籤完畢";
                     drawBtn.disabled = true;
                 }
             }, 1000);
