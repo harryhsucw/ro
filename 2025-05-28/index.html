@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>若若的驚喜扭蛋機</title>
+    <style>
+        /* 基礎樣式設定 */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f7f3ed;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            height: 100vh;
+            background: #fff;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 40px 20px;
+            box-sizing: border-box;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* ================= 上方：標題與提示 ================= */
+        .header-zone {
+            text-align: center;
+            width: 100%;
+            z-index: 10;
+        }
+
+        .title {
+            font-size: 24px;
+            color: #4a3728;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #8c7662;
+        }
+
+        /* ================= 中間：扭蛋主舞台 ================= */
+        .stage-zone {
+            position: relative;
+            width: 110%; /* 微微超出容器，讓手機版圖片能放到最大 */
+            height: 55vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end; /* 底部對齊 */
+            margin-bottom: 10px;
+        }
+
+        /* 【優化】扭蛋機圖片容器：改用滿版百分比，大幅放大 */
+        .gacha-machine-wrapper {
+            position: relative;
+            width: 60%; /* 佔據舞台的 60% 寬度，非常顯眼 */
+            max-width: 280px;
+            cursor: pointer;
+            z-index: 2;
+        }
+
+        .gacha-machine-img {
+            width: 100%;
+            height: auto;
+            display: block;
+            object-fit: contain;
+        }
+
+        /* 扭蛋機點擊震動動畫 */
+        .shake-machine {
+            animation: shake 0.5s ease-in-out;
+        }
+        @keyframes shake {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            10%, 30%, 50%, 70%, 90% { transform: scale(1) rotate(-2deg) translate(-2px, 1px); }
+            20%, 40%, 60%, 80% { transform: scale(1) rotate(2deg) translate(2px, -1px); }
+        }
+
+        /* 【優化】旁邊期待的若若：改用比例控制，並往左移產生微微貼近扭蛋機的溫馨感 */
+        .roro-side-wrapper {
+            position: relative;
+            width: 30%; /* 比例約為扭蛋機的一半 */
+            max-width: 140px;
+            margin-left: -15px; /* 【關鍵】往左微調，讓兩張圖在小螢幕上靠得更近不留白 */
+            z-index: 1;
+        }
+
+        .roro-img {
+            width: 100%;
+            height: auto;
+            display: block;
+            object-fit: contain;
+            animation: expectBounce 1.2s infinite ease-in-out;
+        }
+
+        @keyframes expectBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        /* ================= 動態掉落的扭蛋物件 ================= */
+        .dropped-capsule {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            z-index: 99;
+            /* 初始化在扭蛋機的出蛋口附近 */
+            left: 30%;
+            bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        /* 掉落並固定在畫布正中央的動畫 */
+        .capsule-roll-out {
+            animation: rollOut 1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+
+        @keyframes rollOut {
+            0% {
+                transform: translate(0, 0) scale(0.5) rotate(0deg);
+                opacity: 0;
+            }
+            20% {
+                opacity: 1;
+            }
+            100% {
+                /* 動態置中 */
+                left: calc(50% - 25px);
+                bottom: 26vh;
+                transform: scale(2.2) rotate(720deg);
+                box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            }
+        }
+
+        /* 閃爍發光特效 */
+        .glow-effect {
+            animation: capsuleGlow 0.8s infinite alternate ease-in-out;
+        }
+        @keyframes capsuleGlow {
+            0% { filter: drop-shadow(0 0 5px rgba(255,255,255,0.6)); }
+            100% { filter: drop-shadow(0 0 15px var(--glow-color)); }
+        }
+
+        /* ================= 下方：底部提示 ================= */
+        .footer-hint {
+            font-size: 15px;
+            color: #8c7662;
+            font-weight: bold;
+            animation: pulse 1.5s infinite;
+            background: #fdf6f0;
+            padding: 12px 35px;
+            border-radius: 20px;
+            border: 2px dashed #e5ba9e;
+            margin-bottom: 10px;
+            z-index: 10;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.6; transform: scale(0.98); }
+            50% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0.6; transform: scale(0.98); }
+        }
+
+        /* ================= 成功開蛋彈出視窗 ================= */
+        .success-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(74, 55, 40, 0.75);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            backdrop-filter: blur(4px);
+        }
+
+        .gift-card {
+            background: #fff;
+            padding: 35px 25px;
+            border-radius: 24px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            width: 80%;
+            animation: giftPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes giftPop {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .reward-icon {
+            font-size: 65px;
+            margin-bottom: 15px;
+            display: inline-block;
+        }
+
+        .reward-title {
+            font-size: 22px;
+            color: #e5ba9e;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .reward-text {
+            font-size: 18px;
+            color: #4a3728;
+            font-weight: bold;
+            line-height: 1.6;
+        }
+
+        .replay-btn {
+            margin-top: 25px;
+            background: #e5ba9e;
+            color: white;
+            border: none;
+            padding: 12px 35px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(229, 186, 158, 0.4);
+            transition: background 0.2s;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+
+        <div class="header-zone">
+            <div class="title">若若的驚喜扭蛋機 ✨</div>
+            <div class="subtitle">點擊扭蛋機，看看今天抽到什麼好運！</div>
+        </div>
+
+        <div class="stage-zone" id="stage-zone">
+            
+            <div class="gacha-machine-wrapper" id="gacha-machine" onclick="spinGacha()">
+                <img class="gacha-machine-img" src="gacha-machine.png" alt="扭蛋機">
+            </div>
+
+            <div class="roro-side-wrapper">
+                <img class="roro-img" src="aftershower.png" alt="期待的若若">
+            </div>
+
+        </div>
+
+        <div class="footer-hint" id="footer-text">👇 點擊扭蛋機轉動好運 👇</div>
+
+        <div class="success-overlay hidden" id="success-overlay">
+            <div class="gift-card">
+                <div class="reward-title">🎁 扭蛋獎品開箱 🎁</div>
+                <div class="reward-icon" id="reward-icon">🎉</div>
+                <div class="reward-text" id="reward-text">獲得獎項內容</div>
+                <button class="replay-btn" onclick="resetGame()">再扭一次</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const gachaMachine = document.getElementById('gacha-machine');
+        const stageZone = document.getElementById('stage-zone');
+        const footerText = document.getElementById('footer-text');
+        const successOverlay = document.getElementById('success-overlay');
+        const rewardIcon = document.getElementById('reward-icon');
+        const rewardText = document.getElementById('reward-text');
+
+        let isSpinning = false;
+
+        // 紅、黃、藍、綠、橘、紫 經典盲盒色
+        const ballColors = ['#ff4d4d', '#ffbe0b', '#3a86ff', '#00bbf9', '#fb5607', '#9b5de5'];
+        const rewardData = [
+            { text: "深蹲15個 明天完成！", icon: "🏋️‍♀️" },
+            { text: "獎勵送 Harry 若若的美照一張（自肥）", icon: "🤳" },
+            { text: "冰淇淋一份", icon: "🍦" }
+        ];
+
+        // 點擊轉動扭蛋機
+        function spinGacha() {
+            if (isSpinning) return;
+            isSpinning = true;
+
+            footerText.innerText = "轉動中... 預備出蛋 🌀";
+
+            gachaMachine.classList.add('shake-machine');
+
+            setTimeout(() => {
+                gachaMachine.classList.remove('shake-machine');
+                dropCapsule();
+            }, 650);
+        }
+
+        // 扭蛋生成與滾動邏輯
+        function dropCapsule() {
+            const capsule = document.createElement('div');
+            capsule.classList.add('dropped-capsule');
+            
+            const randomColor = ballColors[Math.floor(Math.random() * ballColors.length)];
+            
+            // 精緻設計：紅金底色 / 彩色雙色，並包覆著金閃閃的小禮物標誌
+            capsule.style.background = `linear-gradient(360deg, ${randomColor} 55%, #ffffff 55%)`;
+            capsule.style.border = `3px solid #fff`;
+            capsule.style.setProperty('--glow-color', randomColor);
+            
+            // 改為精緻的帶緞帶禮物盒標誌 🎁 
+            capsule.innerText = "🎁"; 
+            
+            capsule.classList.add('capsule-roll-out', 'glow-effect');
+            stageZone.appendChild(capsule);
+
+            footerText.innerText = "✨ 點擊螢幕中央的扭蛋打開它！ ✨";
+
+            capsule.addEventListener('click', (e) => {
+                e.stopPropagation(); 
+                
+                capsule.innerText = "🎊";
+                capsule.style.background = "none";
+                capsule.style.border = "none";
+                capsule.style.boxShadow = "none";
+                
+                setTimeout(() => {
+                    capsule.remove();
+                    openRewardModal();
+                }, 250);
+            });
+        }
+
+        // 彈出終極獎品視窗
+        function openRewardModal() {
+            const luckyReward = rewardData[Math.floor(Math.random() * rewardData.length)];
+            
+            rewardIcon.innerText = luckyReward.icon;
+            rewardText.innerHTML = luckyReward.text;
+            
+            successOverlay.classList.remove('hidden');
+            footerText.innerText = "🎉 哇！太幸運了！ 🎉";
+        }
+
+        // 重設遊戲
+        function resetGame() {
+            isSpinning = false;
+            successOverlay.classList.add('hidden');
+            footerText.innerText = "👇 點擊扭蛋機轉動好運 👇";
+        }
+    </script>
+</body>
+</html>
