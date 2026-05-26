@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>若若的洗澡充電站</title>
+    <style>
+        /* 基礎樣式設定 */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f0f4f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            user-select: none; /* 防止瘋狂點擊時選取到文字 */
+        }
+
+        .container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            height: 100vh;
+            background: #fff;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 40px 20px;
+            box-sizing: border-box;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* ================= 上方：進度與提示 ================= */
+        .header-zone {
+            text-align: center;
+            width: 100%;
+        }
+
+        .title {
+            font-size: 22px;
+            color: #334e68;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #627d98;
+            margin-bottom: 20px;
+        }
+
+        /* 電池/進度條外殼 */
+        .battery-container {
+            width: 80%;
+            height: 30px;
+            background: #f0f4f8;
+            border: 4px solid #bcccdc;
+            border-radius: 10px;
+            margin: 0 auto;
+            position: relative;
+            padding: 2px;
+            box-sizing: border-box;
+        }
+
+        /* 進度條本體 */
+        .battery-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #4edbc5, #2bb6a3);
+            border-radius: 4px;
+            transition: width 0.1s ease-out;
+        }
+
+        .percentage-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            top: 2px;
+            left: 0;
+            font-weight: bold;
+            color: #102a43;
+            font-size: 14px;
+            line-height: 22px;
+        }
+
+        /* ================= 中間：點擊與動畫互動區 ================= */
+        .click-zone {
+            position: relative;
+            width: 100%;
+            height: 50vh;
+            display: flex;
+            justify-content: center;
+            align-items: center; /* 【修正】改為 center，讓角色在互動區內絕對置中 */
+            cursor: pointer;
+        }
+
+        /* 若若人偶容器 */
+        .char-wrapper {
+            position: relative;
+            width: 280px;
+            height: 380px;
+            overflow: visible; /* 【修正】改為 visible，避免高舉的手或特效被切掉 */
+            display: flex;
+            align-items: center; /* 【修正】改為置中對齊 */
+            justify-content: center;
+        }
+
+        .char-img {
+            width: 100%;
+            height: auto;
+            max-height: 100%;
+            object-fit: contain;
+            pointer-events: none; 
+            transform-origin: center center; /* 【修正】以中心點縮放 */
+        }
+
+        /* 點擊時的微幅放大反饋 */
+        .bounce {
+            animation: hitBounce 0.12s ease-out;
+        }
+
+        @keyframes hitBounce {
+            0% { transform: scale(1); }
+            40% { transform: scale(1.08); } /* 【修正】微幅放大效果 */
+            100% { transform: scale(1); }
+        }
+
+        /* 動態生成的泡泡與水滴樣式 */
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            animation: floatUp 0.8s ease-out forwards;
+            font-size: 24px;
+            z-index: 5;
+        }
+
+        @keyframes floatUp {
+            0% {
+                transform: translate(0, 0) scale(0.5);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(var(--mx), -150px) scale(1.2);
+                opacity: 0;
+            }
+        }
+
+        /* ================= 下方：底部提示 ================= */
+        .footer-hint {
+            font-size: 14px;
+            color: #9fb3c8;
+            font-weight: bold;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+
+        /* ================= 100% 成功禮物彈出動畫 ================= */
+        .success-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(16, 42, 67, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            backdrop-filter: blur(3px);
+        }
+
+        .gift-card {
+            background: #fff;
+            padding: 30px;
+            border-radius: 24px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            width: 80%;
+            animation: giftPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes giftPop {
+            0% { transform: scale(0.3); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .gift-box-icon {
+            font-size: 60px;
+            animation: wobble 1s infinite;
+            display: inline-block;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        @keyframes wobble {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-8deg); }
+            75% { transform: rotate(8deg); }
+        }
+
+        .reward-text {
+            font-size: 18px;
+            color: #243b53;
+            font-weight: bold;
+            line-height: 1.5;
+        }
+
+        .replay-btn {
+            margin-top: 20px;
+            background: #2bb6a3;
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            font-size: 15px;
+            font-weight: bold;
+            border-radius: 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(43, 182, 163, 0.3);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+
+        <div class="header-zone">
+            <div class="title">若若洗澡充電站 🫧</div>
+            <div class="subtitle" id="game-subtitle">瘋狂點擊畫面，幫若若注入洗澡能量！</div>
+            
+            <div class="battery-container">
+                <div class="battery-bar" id="battery-bar"></div>
+                <div class="percentage-text" id="percentage-text">0%</div>
+            </div>
+        </div>
+
+        <div class="click-zone" id="click-zone">
+            <div class="char-wrapper">
+                <img class="char-img" id="roro-char" src="beforeshower.png" alt="若若">
+            </div>
+        </div>
+
+        <div class="footer-hint" id="footer-hint">👉 連續點擊中間區域 👈</div>
+
+        <div class="success-overlay hidden" id="success-overlay">
+            <div class="gift-card">
+                <div class="gift-box-icon" id="gift-box-icon" onclick="revealGift()">🎁</div>
+                <div class="reward-text" id="reward-text">洗澡成功！<br>點擊禮物盒拆開驚喜 ✨</div>
+                <button class="replay-btn hidden" id="replay-btn" onclick="resetGame()">再玩一次</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const clickZone = document.getElementById('click-zone');
+        const roroChar = document.getElementById('roro-char');
+        const batteryBar = document.getElementById('battery-bar');
+        const percentageText = document.getElementById('percentage-text');
+        const successOverlay = document.getElementById('success-overlay');
+        const giftBoxIcon = document.getElementById('gift-box-icon');
+        const rewardText = document.getElementById('reward-text');
+        const replayBtn = document.getElementById('replay-btn');
+        const footerHint = document.getElementById('footer-hint');
+        const gameSubtitle = document.getElementById('game-subtitle');
+
+        let progress = 0;
+        const rewardList = [
+            "恭喜獲得：變瘦1公斤 💃",
+            "恭喜獲得：Harry抱抱一個 🤗 (是大獎吧！)",
+            "恭喜獲得：吃kit kat不變胖豁免權 🍫"
+        ];
+
+        // 點擊互動邏輯
+        clickZone.addEventListener('click', (e) => {
+            if (progress >= 100) return;
+
+            // 1. 增加進度 (每次點擊加 4%)
+            progress = Math.min(progress + 4, 100);
+            
+            // 2. 更新進度條與文字
+            batteryBar.style.width = progress + '%';
+            percentageText.innerText = progress + '%';
+
+            // 3. 【核心修正】依據百分比動態切換圖片，取消所有 translateY 位移
+            if (progress > 0 && progress < 100) {
+                if (roroChar.getAttribute('src') !== 'shower.png') {
+                    roroChar.src = 'shower.png';
+                    gameSubtitle.innerText = "洗刷刷中！若若正在努力充飽電...🧼";
+                }
+            } else if (progress === 100) {
+                roroChar.src = 'aftershower.png';
+                gameSubtitle.innerText = "洗香香完成！整個人充飽電了 ✨";
+                
+                // 延遲跳出禮物盒
+                setTimeout(() => {
+                    successOverlay.classList.remove('hidden');
+                    footerHint.classList.add('hidden');
+                }, 600);
+            }
+
+            // 4. 觸發微震動/放大回饋 (每次點擊都會在原地放大縮小)
+            roroChar.classList.remove('bounce');
+            void roroChar.offsetWidth; 
+            roroChar.classList.add('bounce');
+
+            // 5. 生成泡泡特效
+            createParticle(e);
+        });
+
+        // 生成噴發泡泡與水滴的函式
+        function createParticle(e) {
+            const rect = clickZone.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            const particle = document.createElement('div');
+            particle.classList.add('particle');
+            
+            const types = ['🫧', '💧', '✨'];
+            particle.innerText = types[Math.floor(Math.random() * types.length)];
+            
+            particle.style.left = `${x - 12}px`;
+            particle.style.top = `${y - 12}px`;
+
+            const randomX = (Math.random() - 0.5) * 80;
+            particle.style.setProperty('--mx', `${randomX}px`);
+
+            clickZone.appendChild(particle);
+
+            particle.addEventListener('animationend', () => {
+                particle.remove();
+            });
+        }
+
+        // 點擊禮物盒拆禮物
+        function revealGift() {
+            giftBoxIcon.innerText = "🎊";
+            giftBoxIcon.style.animation = "none";
+            
+            const finalReward = rewardList[Math.floor(Math.random() * rewardList.length)];
+            rewardText.innerHTML = finalReward;
+            
+            replayBtn.classList.remove('hidden');
+        }
+
+        // 重設遊戲
+        function resetGame() {
+            progress = 0;
+            batteryBar.style.width = '0%';
+            percentageText.innerText = '0%';
+            roroChar.src = 'beforeshower.png';
+            giftBoxIcon.innerText = "🎁";
+            giftBoxIcon.style.animation = "wobble 1s infinite";
+            rewardText.innerHTML = "洗澡成功！<br>點擊禮物盒拆開驚喜 ✨";
+            gameSubtitle.innerText = "瘋狂點擊畫面，幫若若注入洗澡能量！";
+            
+            successOverlay.classList.add('hidden');
+            replayBtn.classList.add('hidden');
+            footerHint.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
