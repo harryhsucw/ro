@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>若若法庭</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&family=Noto+Serif+TC:wght@700;900&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Zen Maru Gothic', "PingFang TC", sans-serif;
+            background: #f5ede3;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            overflow-x: hidden;
+        }
+
+        .page {
+            width: 100%;
+            max-width: 480px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: #f5ede3;
+        }
+
+        /* ══════════ 開場畫面 ══════════ */
+        #screen-intro {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            gap: 24px;
+            padding: 40px 28px;
+        }
+        #screen-intro.hide { display: none; }
+
+        .intro-seal {
+            width: 90px; height: 90px;
+            border: 3px solid #8B6914;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2.8rem;
+            color: #8B6914;
+            animation: rotateSeal 8s linear infinite;
+        }
+        @keyframes rotateSeal { 100% { transform: rotate(360deg); } }
+
+        .intro-title {
+            font-family: 'Noto Serif TC', serif;
+            font-size: 1.7rem; font-weight: 900;
+            color: #3a2a10; letter-spacing: 4px; text-align: center;
+        }
+        .intro-sub { font-size: 0.85rem; color: #8a7060; text-align: center; line-height: 2.1; }
+        .intro-btn {
+            background: #b07d4a; color: #fff; border: none;
+            padding: 14px 44px; font-family: 'Zen Maru Gothic', sans-serif;
+            font-size: 1rem; font-weight: 700; border-radius: 50px; cursor: pointer;
+            letter-spacing: 2px; box-shadow: 0 4px 16px rgba(176,125,74,0.4);
+            transition: all 0.2s;
+        }
+        .intro-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+
+        /* ══════════ 法庭畫面 ══════════ */
+        #screen-court { display: flex; flex-direction: column; align-items: center; width: 100%; }
+        #screen-court.hide { display: none; }
+
+        /* ── 法官區 ── */
+        .judge-zone {
+            width: 100%;
+            background: #f0e4d4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px 20px 16px;
+            position: relative;
+            border-bottom: 3px solid #d4b896;
+        }
+
+        /* 法官插圖預留框 */
+        .judge-img-wrap {
+            width: 100%;
+            max-width: 340px;
+            height: 240px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .judge-placeholder {
+            width: 100%;
+            height: 100%;
+            background: rgba(180,150,110,0.12);
+            border-radius: 12px;
+            border: 2px dashed rgba(180,150,110,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(140,110,70,0.4);
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+        }
+        .judge-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            mix-blend-mode: multiply;
+            display: none;
+        }
+        .judge-img.loaded { display: block; }
+
+        /* ── 日系漫畫對話框 ── */
+        .speech-wrap {
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            z-index: 10;
+        }
+
+        /* 日系風格：細邊框，無陰影 */
+        .speech-bubble {
+            position: relative;
+            background: #fff;
+            border: 1.5px solid #1a1a1a;
+            border-radius: 18px;
+            padding: 10px 16px;
+            min-width: 90px;
+            max-width: 140px;
+            text-align: center;
+            font-size: 1rem;
+            font-weight: 700;
+            color: #1a1a1a;
+            line-height: 1.4;
+            opacity: 0;
+            transform: scale(0.7);
+            transition: opacity 0.3s ease, transform 0.35s cubic-bezier(0.175,0.885,0.32,1.275);
+        }
+        .speech-bubble.show {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* 尾巴：指向右下方（法官方向） */
+        .speech-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -12px;
+            right: 20px;
+            width: 0; height: 0;
+            border-left: 8px solid transparent;
+            border-right: 0px solid transparent;
+            border-top: 12px solid #fff;
+            z-index: 1;
+        }
+        .speech-bubble::before {
+            content: '';
+            position: absolute;
+            bottom: -14px;
+            right: 19px;
+            width: 0; height: 0;
+            border-left: 9px solid transparent;
+            border-right: 1px solid transparent;
+            border-top: 14px solid #1a1a1a;
+        }
+
+        /* 思考泡泡（loading 時） */
+        .think-bubble {
+            position: relative;
+            background: #fff;
+            border: 1.5px solid #1a1a1a;
+            border-radius: 18px;
+            padding: 10px 16px;
+            min-width: 90px;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .think-bubble.show { opacity: 1; }
+        /* 思考泡泡圓點尾巴：右下角指向法官 */
+        .think-dot {
+            position: absolute;
+            background: #fff;
+            border: 1.5px solid #1a1a1a;
+            border-radius: 50%;
+        }
+        .think-dot-1 { width: 9px; height: 9px; bottom: -13px; right: 22px; }
+        .think-dot-2 { width: 6px; height: 6px; bottom: -22px; right: 16px; }
+        .think-dot-3 { width: 4px; height: 4px; bottom: -30px; right: 12px; }
+
+        /* loading 點點 */
+        .loading-dots { display: flex; gap: 5px; justify-content: center; align-items: center; padding: 2px 4px; }
+        .loading-dots span {
+            width: 7px; height: 7px; background: #1a1a1a; border-radius: 50%;
+            animation: dotBounce 0.8s infinite ease-in-out;
+        }
+        .loading-dots span:nth-child(2) { animation-delay: 0.15s; }
+        .loading-dots span:nth-child(3) { animation-delay: 0.3s; }
+        @keyframes dotBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+
+        /* ── 當事人區 ── */
+        .parties-zone {
+            width: 100%;
+            background: #fff;
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-end;
+            padding: 24px 16px 12px;
+            border-bottom: 1px solid #e8d8c8;
+        }
+
+        .party {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* 人物圖片留位 */
+        .person-img-wrap {
+            width: 110px;
+            height: 140px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .person-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            mix-blend-mode: multiply;
+        }
+        .person-placeholder {
+            display: none;
+            position: absolute;
+            inset: 0;
+            border: 2px dashed rgba(160,120,80,0.3);
+            border-radius: 10px;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.6rem;
+            color: rgba(140,100,60,0.4);
+            letter-spacing: 1px;
+            background: rgba(180,150,110,0.06);
+        }
+
+        /* 沙包圖片 */
+        .sandbag-img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            mix-blend-mode: multiply;
+            border-radius: inherit;
+            pointer-events: none;
+        }
+
+        .party-name {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #5a4030;
+            letter-spacing: 1px;
+            text-align: center;
+        }
+
+        /* ── 罪狀卡片 ── */
+        .charge-zone {
+            width: 100%;
+            padding: 20px 20px 16px;
+        }
+
+        .charge-card {
+            width: 100%;
+            background: #b07d4a;
+            border-radius: 16px;
+            padding: 18px 24px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 16px rgba(100,60,20,0.2);
+        }
+        .charge-label {
+            font-size: 0.62rem;
+            letter-spacing: 4px;
+            color: rgba(255,235,200,0.75);
+            font-weight: 700;
+        }
+        .charge-text {
+            font-family: 'Noto Serif TC', serif;
+            font-size: 1.6rem;
+            font-weight: 900;
+            color: #fff;
+            letter-spacing: 3px;
+            text-align: center;
+            line-height: 1.4;
+            opacity: 0;
+            transform: translateY(6px);
+            transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+        .charge-text.show { opacity: 1; transform: translateY(0); }
+
+        /* 回合點點 */
+        .round-dots {
+            display: flex; gap: 6px; margin-top: 4px;
+        }
+        .rdot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: rgba(255,255,255,0.25);
+            transition: background 0.4s;
+        }
+        .rdot.done { background: rgba(255,255,255,0.9); }
+
+        /* ── 按鈕 ── */
+        .btn-zone { width: 100%; padding: 12px 20px 32px; }
+        .main-btn {
+            width: 100%;
+            padding: 15px;
+            font-family: 'Zen Maru Gothic', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            border-radius: 50px;
+            border: none;
+            cursor: pointer;
+            letter-spacing: 2px;
+            transition: all 0.3s ease;
+        }
+        .main-btn.judge-btn {
+            background: #6a5040;
+            color: #f0e0c8;
+            box-shadow: 0 4px 14px rgba(80,50,20,0.35);
+        }
+        .main-btn.judge-btn:hover { filter: brightness(1.1); }
+        .main-btn.judge-btn:disabled {
+            background: #9a8878;
+            cursor: not-allowed;
+        }
+        .main-btn.next-btn {
+            background: #b07d4a;
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(176,125,74,0.4);
+            display: none;
+        }
+        .main-btn.next-btn.show { display: block; }
+        .main-btn.next-btn:hover { filter: brightness(1.08); }
+
+        /* ══════════ 判決畫面 ══════════ */
+        #screen-verdict { display: none; flex-direction: column; align-items: center; min-height: 100vh; }
+        #screen-verdict.show { display: flex; }
+
+        .verdict-judge-zone {
+            width: 100%;
+            background: #f0e4d4;
+            padding: 24px 20px 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border-bottom: 3px solid #d4b896;
+            position: relative;
+        }
+        .verdict-img-wrap {
+            width: 100%; max-width: 340px; height: 240px;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .verdict-speech {
+            position: absolute; top: 14px; left: 14px; z-index: 10;
+        }
+        .verdict-bubble {
+            background: #fff; border: 1.5px solid #1a1a1a;
+            border-radius: 18px; padding: 10px 16px;
+            font-size: 1.05rem; font-weight: 700; color: #1a1a1a;
+            text-align: center; line-height: 1.5; position: relative;
+            animation: popIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275) forwards;
+        }
+        @keyframes popIn { 0%{transform:scale(0.5); opacity:0} 100%{transform:scale(1); opacity:1} }
+        .verdict-bubble::after {
+            content:''; position:absolute; bottom:-12px; right:20px;
+            border-left:8px solid transparent; border-right:0 solid transparent;
+            border-top:12px solid #fff; z-index:1;
+        }
+        .verdict-bubble::before {
+            content:''; position:absolute; bottom:-14px; right:19px;
+            border-left:9px solid transparent; border-right:1px solid transparent;
+            border-top:14px solid #1a1a1a;
+        }
+
+        .verdict-parties {
+            width:100%; background:#fff;
+            display:flex; justify-content:space-around; align-items:flex-end;
+            padding:24px 16px 12px; border-bottom:1px solid #e8d8c8;
+        }
+
+        .verdict-result {
+            width:100%; padding:20px 20px 16px;
+        }
+        .verdict-card {
+            width:100%; background:#3a2a10; border-radius:16px;
+            padding:24px; display:flex; flex-direction:column;
+            align-items:center; gap:10px; box-shadow:0 4px 20px rgba(0,0,0,0.25);
+        }
+        .verdict-stamp {
+            font-size:0.65rem; letter-spacing:5px; color:rgba(255,220,150,0.6); font-weight:700;
+        }
+        .verdict-main {
+            font-family:'Noto Serif TC',serif; font-size:1.4rem; font-weight:900;
+            color:#fde68a; letter-spacing:3px; text-align:center; line-height:1.6;
+        }
+        .verdict-sub {
+            font-size:0.82rem; color:rgba(255,220,150,0.7); text-align:center; line-height:1.8;
+        }
+        .verdict-fight-btn {
+            width:100%; margin-top:4px;
+            background:linear-gradient(135deg,#ef4444,#f97316); color:#fff; border:none;
+            padding:15px; font-family:'Zen Maru Gothic',sans-serif;
+            font-size:1rem; font-weight:700; border-radius:50px; cursor:pointer;
+            letter-spacing:2px; box-shadow:0 4px 20px rgba(239,68,68,0.4);
+            animation:rpulse 1.5s infinite;
+        }
+        @keyframes rpulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.03)} }
+
+        /* ══════════ 打大便 ══════════ */
+        #screen-fight { display:none; flex-direction:column; align-items:center; min-height:100vh; background:#fff8f0; }
+        #screen-fight.show { display:flex; }
+
+        .fight-header {
+            width:100%; background:#fff0e8;
+            padding:22px 24px 14px;
+            display:flex; flex-direction:column; align-items:center; gap:8px;
+            border-bottom:2px dashed #fcd0a8;
+        }
+        .fight-title { font-size:1rem; font-weight:700; color:#c2440a; letter-spacing:2px; }
+        .hp-bar-bg {
+            width:100%; max-width:340px; height:22px;
+            background:#fde8d8; border-radius:12px; overflow:hidden;
+            border:2px solid #f4a070; position:relative;
+        }
+        .hp-bar-fill {
+            height:100%; width:100%;
+            background:linear-gradient(90deg,#ef4444,#f97316);
+            border-radius:10px; transition:width 0.25s ease-out;
+        }
+        .hp-text {
+            position:absolute; inset:0;
+            display:flex; align-items:center; justify-content:center;
+            font-size:0.72rem; font-weight:700; color:#fff;
+            text-shadow:0 1px 2px rgba(0,0,0,0.3);
+        }
+        .combo-text { font-size:0.8rem; color:#f97316; font-weight:700; min-height:20px; }
+
+        .sandbag-area {
+            flex:1; display:flex; flex-direction:column;
+            justify-content:center; align-items:center;
+            cursor:pointer; -webkit-tap-highlight-color:transparent;
+        }
+        .sandbag-wrap { display:flex; flex-direction:column; align-items:center; }
+        .sandbag {
+            width:220px; height:280px;
+            position:relative;
+            display:flex; justify-content:center; align-items:center;
+        }
+        .sandbag.hit { animation:hitShake 0.15s ease-in-out; }
+        @keyframes hitShake {
+            0%{transform:rotate(0) scale(1)} 25%{transform:rotate(-6deg) scale(0.96) translateX(-8px)}
+            75%{transform:rotate(4deg) scale(0.97) translateX(5px)} 100%{transform:rotate(0) scale(1)}
+        }
+        .sandbag-img {
+            position:absolute; inset:0; width:100%; height:100%;
+            object-fit:contain; mix-blend-mode:multiply; pointer-events:none;
+        }
+        .poop-sticker {
+            position:relative; z-index:2;
+            font-size:4rem; line-height:1;
+            filter:drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+            pointer-events:none; transition:transform 0.1s;
+            margin-top:20px;
+        }
+        .fight-hint { padding:14px; font-size:0.8rem; color:#c0a090; text-align:center; font-weight:600; }
+        .hit-effect {
+            position:fixed; pointer-events:none; z-index:50;
+            font-weight:900; animation:hitPop 0.5s ease-out forwards;
+        }
+        @keyframes hitPop {
+            0%{transform:translate(-50%,-50%) scale(0.5); opacity:1}
+            60%{transform:translate(-50%,-80%) scale(1.2); opacity:1}
+            100%{transform:translate(-50%,-110%) scale(0.8); opacity:0}
+        }
+
+        /* ══════════ 結局 ══════════ */
+        #screen-end { display:none; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; gap:20px; padding:40px 24px; background:#f5ede3; }
+        #screen-end.show { display:flex; }
+        .end-roro { font-size:5rem; animation:breathe 2.5s ease-in-out infinite; }
+        @keyframes breathe { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
+        .end-title { font-family:'Noto Serif TC',serif; font-size:1.3rem; font-weight:900; color:#3a2a10; text-align:center; letter-spacing:2px; }
+        .end-msg { font-size:0.9rem; color:#8a7060; text-align:center; line-height:2.2; max-width:300px; }
+        .end-btn { background:#b07d4a; color:#fff; border:none; padding:13px 36px; font-family:'Zen Maru Gothic',sans-serif; font-size:0.95rem; font-weight:700; border-radius:50px; cursor:pointer; box-shadow:0 4px 16px rgba(176,125,74,0.35); transition:all 0.2s; }
+
+        /* 粒子 */
+        .ptcl { position:fixed; pointer-events:none; z-index:200; animation:fly var(--dur,1s) ease-out forwards; }
+        @keyframes fly { 0%{transform:translate(0,0) scale(1); opacity:1} 100%{transform:translate(var(--sx),var(--sy)) scale(0); opacity:0} }
+    </style>
+</head>
+<body>
+<div class="page">
+
+<!-- ① 開場 -->
+<div id="screen-intro">
+    <div class="intro-seal">⚖️</div>
+    <div class="intro-title">若若特別法庭</div>
+    <div class="intro-sub">
+        今日案件：職場不公正<br>
+        原告：若若<br>
+        被告：大便（職場壞人）<br><br>
+        法官已就位，請肅靜
+    </div>
+    <button class="intro-btn" onclick="startCourt()">🔨 開庭！</button>
+</div>
+
+<!-- ② 法庭 -->
+<div id="screen-court" class="hide">
+
+    <!-- 法官區 -->
+    <div class="judge-zone">
+        <div class="judge-img-wrap">
+            <img class="judge-img" id="judge-img"
+                 src="judge.png" alt=""
+                 onload="this.classList.add('loaded');document.getElementById('judge-placeholder').style.display='none'"
+                 onerror="this.style.display='none'">
+            <div class="judge-placeholder" id="judge-placeholder">法官插圖</div>
+        </div>
+
+        <!-- 對話框（預設隱藏） -->
+        <div class="speech-wrap" id="speech-wrap" style="display:none">
+            <!-- 思考泡泡 -->
+            <div class="think-bubble" id="think-bubble">
+                <div class="loading-dots">
+                    <span></span><span></span><span></span>
+                </div>
+                <div class="think-dot think-dot-1"></div>
+                <div class="think-dot think-dot-2"></div>
+                <div class="think-dot think-dot-3"></div>
+            </div>
+            <!-- 判決泡泡 -->
+            <div class="speech-bubble" id="speech-bubble"></div>
+        </div>
+    </div>
+
+    <!-- 當事人 -->
+    <div class="parties-zone">
+        <!-- 若若背影 → plaintiff.png -->
+        <div class="party">
+            <div class="person-img-wrap">
+                <img class="person-img" src="plaintiff.png" alt="原告若若"
+                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                <div class="person-placeholder">plaintiff.png</div>
+            </div>
+            <div class="party-name">原告：若若</div>
+        </div>
+
+        <!-- 被告背影 → defendant.png -->
+        <div class="party">
+            <div class="person-img-wrap">
+                <img class="person-img" src="defendant.png" alt="被告大便"
+                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                <div class="person-placeholder">defendant.png</div>
+            </div>
+            <div class="party-name">被告：大便</div>
+        </div>
+    </div>
+
+    <!-- 罪狀卡 -->
+    <div class="charge-zone">
+        <div class="charge-card">
+            <div class="charge-label">控訴理由</div>
+            <div class="charge-text" id="charge-text">亂發脾氣</div>
+            <div class="round-dots">
+                <div class="rdot" id="rdot-0"></div>
+                <div class="rdot" id="rdot-1"></div>
+                <div class="rdot" id="rdot-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 按鈕 -->
+    <div class="btn-zone">
+        <button class="main-btn judge-btn" id="judge-btn" onclick="doJudge()">判決</button>
+        <button class="main-btn next-btn" id="next-btn" onclick="nextCharge()">下一項</button>
+    </div>
+
+</div>
+
+<!-- ③ 最終判決 -->
+<div id="screen-verdict">
+    <div class="verdict-judge-zone">
+        <div class="verdict-img-wrap">
+            <img style="width:100%;height:100%;object-fit:contain;mix-blend-mode:multiply"
+                 src="judge.png" alt="" onerror="this.style.display='none'">
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(140,110,70,0.3);font-size:0.75rem;letter-spacing:2px" id="vp">法官插圖</div>
+        </div>
+        <div class="verdict-speech">
+            <div class="verdict-bubble">被告<br>有罪！</div>
+        </div>
+    </div>
+    <div class="verdict-parties">
+        <div class="party">
+            <div class="person-img-wrap">
+                <img class="person-img" src="plaintiff.png" alt="原告若若"
+                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                <div class="person-placeholder">plaintiff.png</div>
+            </div>
+            <div class="party-name">原告：若若</div>
+        </div>
+        <div class="party">
+            <div class="person-img-wrap">
+                <img class="person-img" src="defendant.png" alt="被告大便"
+                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                <div class="person-placeholder">defendant.png</div>
+            </div>
+            <div class="party-name">被告：大便</div>
+        </div>
+    </div>
+    <div class="verdict-result">
+        <div class="verdict-card">
+            <div class="verdict-stamp">── 判決書 ──</div>
+            <div class="verdict-main">若若完勝！</div>
+            <div class="verdict-sub">被告罪證確鑿<br>若若所受委屈，屬實<br>判決：接受若若親自制裁</div>
+            <button class="verdict-fight-btn" onclick="startFight()">⚡ 執行判決！打爆它！</button>
+        </div>
+    </div>
+</div>
+
+<!-- ④ 打大便 -->
+<div id="screen-fight">
+    <div class="fight-header">
+        <div class="fight-title">💢 制裁大便人！</div>
+        <div class="hp-bar-bg">
+            <div class="hp-bar-fill" id="hp-fill"></div>
+            <div class="hp-text" id="hp-text">HP 100 / 100</div>
+        </div>
+        <div class="combo-text" id="combo-text"></div>
+    </div>
+    <div class="sandbag-area" id="sandbag-area" onclick="punch(event)" ontouchstart="punch(event)">
+        <div class="sandbag-wrap">
+            <div class="sandbag" id="sandbag">
+                <img class="sandbag-img" src="sandbag.png" alt="">
+                <div class="poop-sticker">💩</div>
+            </div>
+        </div>
+    </div>
+    <div class="fight-hint">👊 用力點擊大便沙包！</div>
+</div>
+
+<!-- ⑤ 結局 -->
+<div id="screen-end">
+    <div class="end-roro">😮‍💨</div>
+    <div class="end-title">若若，鬆一口氣吧</div>
+    <div class="end-msg">委屈打出來了，生氣也發洩了。<br><br>你已經很努力了，<br>今天好好休息，<br>明天繼續閃閃發光 ✨</div>
+    <button class="end-btn" onclick="location.reload()">再來一次</button>
+</div>
+
+</div><!-- /page -->
+
+<script>
+const charges = [
+    { text: "不提供訓練和協助" },
+    { text: "亂發脾氣" },
+    { text: "不合理要求" },
+];
+
+let chargeIndex = 0;
+let judging = false;
+
+function showScreen(id) {
+    ['screen-intro','screen-court','screen-verdict','screen-fight','screen-end'].forEach(s => {
+        const el = document.getElementById(s);
+        el.classList.remove('show','hide');
+        if (s === 'screen-intro') el.style.display = (s===id)?'flex':'none';
+        else if (['screen-verdict','screen-fight','screen-end'].includes(s)) {
+            el.style.display = (s===id)?'flex':'none';
+        } else {
+            el.classList.toggle('hide', s!==id);
+        }
+    });
+}
+
+function startCourt() {
+    document.getElementById('screen-intro').style.display = 'none';
+    document.getElementById('screen-court').classList.remove('hide');
+    setTimeout(() => loadCharge(0), 200);
+}
+
+function loadCharge(idx) {
+    chargeIndex = idx;
+    judging = false;
+
+    // 更新點點
+    for (let i=0; i<3; i++)
+        document.getElementById(`rdot-${i}`).classList.toggle('done', i < idx);
+
+    // 罪狀文字
+    const ct = document.getElementById('charge-text');
+    ct.classList.remove('show');
+    setTimeout(() => {
+        ct.innerText = charges[idx].text;
+        ct.classList.add('show');
+    }, 100);
+
+    // 重置對話框
+    document.getElementById('speech-wrap').style.display = 'none';
+    document.getElementById('think-bubble').classList.remove('show');
+    document.getElementById('speech-bubble').classList.remove('show');
+
+    // 重置按鈕
+    const jb = document.getElementById('judge-btn');
+    const nb = document.getElementById('next-btn');
+    jb.disabled = false;
+    jb.style.display = 'block';
+    nb.classList.remove('show');
+    nb.style.display = 'none';
+}
+
+function doJudge() {
+    if (judging) return;
+    judging = true;
+
+    const jb = document.getElementById('judge-btn');
+    jb.disabled = true;
+    jb.innerText = '審理中...';
+
+    const speechWrap = document.getElementById('speech-wrap');
+    const thinkBubble = document.getElementById('think-bubble');
+    const speechBubble = document.getElementById('speech-bubble');
+
+    // 顯示思考泡泡
+    speechWrap.style.display = 'block';
+    setTimeout(() => thinkBubble.classList.add('show'), 100);
+
+    // 1.8秒後換成判決
+    setTimeout(() => {
+        thinkBubble.classList.remove('show');
+        setTimeout(() => {
+            const isLast = chargeIndex >= charges.length - 1;
+            speechBubble.innerText = isLast ? '被告\n有罪！' : '有罪！';
+            speechBubble.classList.add('show');
+
+            // 隱藏判決按鈕，顯示下一項
+            jb.style.display = 'none';
+            const nb = document.getElementById('next-btn');
+            nb.style.display = 'block';
+            nb.classList.add('show');
+            nb.innerText = isLast ? '宣判結果 ⚖️' : '下一項';
+        }, 200);
+    }, 1800);
+}
+
+function nextCharge() {
+    const next = chargeIndex + 1;
+    if (next < charges.length) {
+        loadCharge(next);
+        // 載入後自動開始審判
+        setTimeout(() => doJudge(), 600);
+    } else {
+        // 進入最終判決
+        document.getElementById('screen-court').classList.add('hide');
+        document.getElementById('screen-verdict').style.display = 'flex';
+    }
+}
+
+/* ══ 打大便 ══ */
+const MAX_HP = 100;
+let hp = MAX_HP, combo = 0, comboTimer = null, lastPunch = 0;
+
+function startFight() {
+    hp = MAX_HP; combo = 0;
+    updateHP();
+    document.getElementById('screen-verdict').style.display = 'none';
+    document.getElementById('screen-fight').style.display = 'flex';
+}
+
+function updateHP() {
+    const pct = Math.max(0, hp/MAX_HP*100);
+    document.getElementById('hp-fill').style.width = pct+'%';
+    document.getElementById('hp-text').innerText = `HP ${Math.max(0,hp)} / ${MAX_HP}`;
+    const fill = document.getElementById('hp-fill');
+    if (pct>50)      fill.style.background='linear-gradient(90deg,#ef4444,#f97316)';
+    else if(pct>25)  fill.style.background='linear-gradient(90deg,#f97316,#fbbf24)';
+    else             fill.style.background='linear-gradient(90deg,#fbbf24,#fde68a)';
+}
+
+function punch(e) {
+    e.preventDefault();
+    if (hp<=0) return;
+    const now = Date.now();
+    if (now-lastPunch<80) return;
+    lastPunch = now;
+
+    combo++;
+    clearTimeout(comboTimer);
+    comboTimer = setTimeout(()=>{combo=0;},1200);
+
+    const dmg = Math.min(18, 8+Math.floor(combo/3)*2);
+    hp = Math.max(0, hp-dmg);
+    updateHP();
+
+    const sandbag = document.getElementById('sandbag');
+    sandbag.classList.remove('hit');
+    void sandbag.offsetWidth;
+    sandbag.classList.add('hit');
+    sandbag.addEventListener('animationend',()=>sandbag.classList.remove('hit'),{once:true});
+
+    document.querySelector('.poop-sticker').style.transform='scale(0.82)';
+    setTimeout(()=>document.querySelector('.poop-sticker').style.transform='',120);
+
+    const words = combo>=8?['💥ULTRA!!','⚡MAX!!'] : combo>=5?['💥連擊！','⚡好猛！'] : ['👊打！','💢ㄟ！','😤哼！','💥'];
+    const word = words[Math.floor(Math.random()*words.length)];
+    let cx, cy;
+    if (e.touches){cx=e.touches[0].clientX;cy=e.touches[0].clientY;}
+    else{cx=e.clientX;cy=e.clientY;}
+
+    const el=document.createElement('div');
+    el.className='hit-effect'; el.innerText=word;
+    el.style.cssText=`left:${cx}px;top:${cy}px;font-size:${1.1+combo*0.05}rem;color:${combo>=8?'#fde68a':combo>=5?'#f97316':'#ef4444'};`;
+    document.body.appendChild(el);
+    el.addEventListener('animationend',()=>el.remove());
+
+    const ce=document.getElementById('combo-text');
+    if(combo>=3){ce.innerText=combo>=8?`🔥 ${combo}連擊！ULTRA！`:combo>=5?`💥 ${combo}連擊！`:`👊 ${combo}連擊！`;ce.style.opacity='1';}
+    else ce.style.opacity='0';
+
+    if(navigator.vibrate) navigator.vibrate(30);
+    if(hp<=0) setTimeout(endFight,400);
+}
+
+function endFight() {
+    const rect=document.getElementById('sandbag-area').getBoundingClientRect();
+    const cx=rect.left+rect.width/2, cy=rect.top+rect.height/2;
+    ['💩','💥','✨','🎊','⭐'].forEach((s,i)=>{
+        for(let j=0;j<4;j++) setTimeout(()=>{
+            const el=document.createElement('div');
+            el.className='ptcl'; el.innerText=s; el.style.fontSize='1.4rem';
+            el.style.left=(cx+(Math.random()-.5)*60)+'px';
+            el.style.top=(cy+(Math.random()-.5)*60)+'px';
+            el.style.setProperty('--sx',(Math.random()-.5)*160+'px');
+            el.style.setProperty('--sy',-(60+Math.random()*120)+'px');
+            el.style.setProperty('--dur','0.9s');
+            document.body.appendChild(el);
+            el.addEventListener('animationend',()=>el.remove());
+        },(i*4+j)*40);
+    });
+    setTimeout(()=>{
+        document.getElementById('screen-fight').style.display='none';
+        document.getElementById('screen-end').style.display='flex';
+    },1200);
+}
+</script>
+</body>
+</html>
