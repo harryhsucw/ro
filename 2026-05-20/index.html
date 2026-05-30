@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="format-detection" content="telephone=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>餵養若若 🌸</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0; padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+:root {
+  --bg: #ede8e3;
+  --sand: #d4a882;
+  --pink: #f2a7b8;
+  --text: #5a4a3a;
+  --text-light: #a09080;
+  --card-shadow: 0 4px 20px rgba(90,74,58,0.10);
+  --shelf-h: 220px; /* JS will override */
+  --topbar-h: 80px; /* JS will override */
+}
+
+html {
+  height: 100%;
+  /* prevent bounce scroll in Line browser */
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+}
+
+body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  font-family: 'Zen Maru Gothic', 'PingFang TC', 'Apple Color Emoji', sans-serif;
+  color: var(--text);
+  /* safe area for notch phones */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ── Blobs ── */
+.bg-blob {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.35;
+  pointer-events: none;
+  transition: background 2s ease, opacity 2s ease;
+  z-index: 0;
+}
+.blob1 { width: min(280px, 70vw); height: min(280px, 70vw); top: -60px; right: -60px; background: #f5c6d0; }
+.blob2 { width: min(200px, 50vw); height: min(200px, 50vw); bottom: 180px; left: -60px; background: #c8e6c9; }
+.blob3 { width: min(160px, 40vw); height: min(160px, 40vw); bottom: 60px; right: 20px; background: #ffe0b2; }
+
+/* ── App shell — height set by JS ── */
+#app {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  height: var(--app-h, 100%);
+  overflow: hidden;
+}
+
+/* ── Topbar ── */
+#topbar {
+  flex-shrink: 0;
+  padding: clamp(10px, 3vw, 16px) clamp(14px, 4vw, 20px) 8px;
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.game-title {
+  font-size: clamp(12px, 3.5vw, 15px);
+  font-weight: 700;
+  color: var(--text-light);
+  letter-spacing: 0.05em;
+}
+
+.happiness-label {
+  font-size: clamp(11px, 3vw, 13px);
+  color: var(--sand);
+  font-weight: 700;
+}
+
+.bar-track {
+  width: 100%;
+  height: 10px;
+  background: rgba(255,255,255,0.6);
+  border-radius: 99px;
+  overflow: visible;
+  position: relative;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #f2c4ce, #f2a7b8, #e8869a);
+  transition: width 0.6s cubic-bezier(.34,1.56,.64,1);
+  position: relative;
+  max-width: 100%;
+}
+
+.bar-fill::after {
+  content: '';
+  position: absolute;
+  right: -1px; top: 50%;
+  transform: translateY(-50%);
+  width: 15px; height: 15px;
+  background: white;
+  border: 3px solid #f2a7b8;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(242,167,184,0.4);
+}
+
+.bar-milestones {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+}
+.milestone-dot {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.9);
+  border: 1.5px solid rgba(242,167,184,0.5);
+  transition: background 0.4s, border-color 0.4s;
+}
+.milestone-dot.passed {
+  background: white;
+  border-color: white;
+  box-shadow: 0 0 4px rgba(255,255,255,0.8);
+}
+
+#stage-banner {
+  text-align: center;
+  margin-top: 5px;
+  height: 18px;
+  font-size: clamp(10px, 2.8vw, 12px);
+  color: var(--text-light);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  transition: color 0.6s;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* ── Ruoruo stage ── */
+#ruoruo-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-height: 0;
+}
+
+.flying-item {
+  position: fixed;
+  font-size: clamp(28px, 8vw, 36px);
+  pointer-events: none;
+  z-index: 100;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15));
+}
+
+#ruoruo-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Character size: scales with viewport, shorter phones get smaller */
+#ruoruo-img {
+  width: clamp(140px, 42vw, 200px);
+  height: clamp(168px, 50vw, 240px);
+  object-fit: contain;
+  mix-blend-mode: multiply;
+  filter: drop-shadow(0 8px 24px rgba(90,74,58,0.12));
+  display: block;
+}
+
+#ruoruo-emoji {
+  font-size: clamp(72px, 22vw, 100px);
+  line-height: 1;
+  filter: drop-shadow(0 8px 24px rgba(90,74,58,0.12));
+  display: none;
+}
+
+.ruoruo-aura {
+  position: absolute;
+  width: clamp(120px, 36vw, 160px);
+  height: clamp(120px, 36vw, 160px);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(242,167,184,0.3) 0%, transparent 70%);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: aura-pulse 3s ease-in-out infinite;
+}
+
+@keyframes aura-pulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+  50%       { transform: translate(-50%, -50%) scale(1.12); opacity: 1; }
+}
+
+/* Character animations */
+#ruoruo-wrap.state-jump #ruoruo-img,
+#ruoruo-wrap.state-jump #ruoruo-emoji { animation: jump 0.5s cubic-bezier(.34,1.56,.64,1) forwards; }
+#ruoruo-wrap.state-frown #ruoruo-img,
+#ruoruo-wrap.state-frown #ruoruo-emoji { animation: shake 0.4s ease forwards; }
+#ruoruo-wrap.state-think #ruoruo-img,
+#ruoruo-wrap.state-think #ruoruo-emoji { animation: tilt 0.6s ease forwards; }
+#ruoruo-wrap.state-new #ruoruo-img,
+#ruoruo-wrap.state-new #ruoruo-emoji { animation: sway 1.5s ease-in-out infinite; }
+#ruoruo-wrap.state-sing #ruoruo-img,
+#ruoruo-wrap.state-sing #ruoruo-emoji { animation: sway 1s ease-in-out infinite; }
+#ruoruo-wrap.state-heart #ruoruo-img,
+#ruoruo-wrap.state-heart #ruoruo-emoji { animation: heartpop 0.4s cubic-bezier(.34,1.56,.64,1) forwards; }
+
+@keyframes jump  { 0%{transform:translateY(0)} 40%{transform:translateY(-28px) scale(1.08)} 70%{transform:translateY(-16px) scale(1.04)} 100%{transform:translateY(0) scale(1)} }
+@keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px) rotate(-3deg)} 60%{transform:translateX(8px) rotate(3deg)} }
+@keyframes tilt  { 0%,100%{transform:rotate(0deg)} 30%{transform:rotate(-8deg)} 70%{transform:rotate(8deg)} }
+@keyframes sway  { 0%,100%{transform:rotate(-4deg) translateY(0)} 50%{transform:rotate(4deg) translateY(-6px)} }
+@keyframes heartpop { 0%{transform:scale(1)} 50%{transform:scale(1.2)} 100%{transform:scale(1)} }
+
+.music-note {
+  position: absolute;
+  font-size: clamp(16px, 4vw, 20px);
+  pointer-events: none;
+  animation: float-note 2s ease-out forwards;
+  z-index: 10;
+}
+@keyframes float-note {
+  0%   { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+  100% { opacity: 0; transform: translateY(-70px) scale(0.5) rotate(30deg); }
+}
+
+.reaction-burst {
+  position: absolute;
+  font-size: clamp(22px, 6vw, 28px);
+  pointer-events: none;
+  z-index: 20;
+  animation: burst-up 0.8s ease-out forwards;
+}
+@keyframes burst-up {
+  0%   { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-56px) scale(1.4); }
+}
+
+.heart-particle {
+  position: fixed;
+  pointer-events: none;
+  z-index: 200;
+  animation: heart-float var(--dur, 2s) ease-out forwards;
+}
+@keyframes heart-float {
+  0%   { opacity: 1; transform: translateY(0) scale(1) rotate(var(--rot,0deg)); }
+  100% { opacity: 0; transform: translateY(-180px) scale(1.6) rotate(var(--rot2,20deg)); }
+}
+
+#combo-badge {
+  position: absolute;
+  top: -10px; right: -16px;
+  background: linear-gradient(135deg, #f7c873, #f4a261);
+  color: white;
+  font-weight: 700;
+  font-size: clamp(11px, 3vw, 13px);
+  padding: 3px 9px;
+  border-radius: 99px;
+  box-shadow: 0 3px 10px rgba(244,162,97,0.4);
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.3s, transform 0.3s;
+  white-space: nowrap;
+  z-index: 30;
+}
+#combo-badge.show { opacity: 1; transform: scale(1); }
+
+/* ── Shelf ── */
+#shelf {
+  flex-shrink: 0;
+  padding: clamp(10px, 2.5vw, 14px) clamp(10px, 3vw, 16px) clamp(12px, 3vw, 20px);
+  padding-bottom: max(clamp(12px, 3vw, 20px), env(safe-area-inset-bottom));
+  background: rgba(255,255,255,0.55);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-radius: 28px 28px 0 0;
+  box-shadow: 0 -4px 24px rgba(90,74,58,0.08);
+}
+
+.shelf-title {
+  text-align: center;
+  font-size: clamp(10px, 2.8vw, 12px);
+  color: var(--text-light);
+  font-weight: 500;
+  margin-bottom: 8px;
+  letter-spacing: 0.1em;
+}
+
+#item-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: clamp(6px, 1.8vw, 9px);
+}
+
+.item-card {
+  background: white;
+  border-radius: clamp(12px, 3.5vw, 16px);
+  padding: clamp(6px, 1.8vw, 9px) clamp(3px, 1vw, 5px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  box-shadow: var(--card-shadow);
+  transition: transform 0.15s cubic-bezier(.34,1.56,.64,1), box-shadow 0.15s;
+  border: 2px solid transparent;
+  position: relative;
+  overflow: hidden;
+  /* min tap size for mobile */
+  min-height: 64px;
+}
+
+.item-card:active { transform: scale(0.90); box-shadow: 0 2px 8px rgba(90,74,58,0.08); }
+.item-card.love    { border-color: rgba(242,167,184,0.4); }
+.item-card.like    { border-color: rgba(212,168,130,0.3); }
+.item-card.weird   { border-color: rgba(147,197,114,0.3); }
+.item-card.dislike { border-color: rgba(180,180,180,0.3); }
+.item-card.love::before {
+  content: '💕';
+  position: absolute;
+  top: 2px; right: 3px;
+  font-size: 7px;
+  opacity: 0.6;
+}
+
+.item-emoji { font-size: clamp(22px, 6.5vw, 28px); line-height: 1; }
+.item-name  {
+  font-size: clamp(9px, 2.4vw, 11px);
+  color: var(--text-light);
+  text-align: center;
+  font-weight: 500;
+  line-height: 1.2;
+  word-break: keep-all;
+}
+
+/* ── Win overlay ── */
+#win-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: rgba(237,232,227,0.93);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px;
+  padding-top: max(24px, env(safe-area-inset-top));
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+}
+#win-overlay.show { display: flex; animation: fade-in 0.5s ease; }
+
+@keyframes fade-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.win-card {
+  background: white;
+  border-radius: 28px;
+  padding: clamp(28px,7vw,40px) clamp(20px,6vw,28px);
+  text-align: center;
+  box-shadow: 0 12px 48px rgba(90,74,58,0.14);
+  max-width: 320px;
+  width: 100%;
+}
+
+.win-emoji-big { font-size: clamp(56px, 16vw, 72px); margin-bottom: 10px; }
+.win-title {
+  font-size: clamp(18px, 5vw, 22px);
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+.win-sub {
+  font-size: clamp(12px, 3.5vw, 14px);
+  color: var(--text-light);
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+.btn-restart {
+  background: linear-gradient(135deg, var(--sand), #c9956f);
+  color: white;
+  border: none;
+  border-radius: 99px;
+  padding: clamp(11px,3vw,14px) clamp(24px,7vw,32px);
+  font-family: inherit;
+  font-size: clamp(13px, 3.8vw, 15px);
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(212,168,130,0.35);
+  transition: transform 0.15s;
+  /* bigger tap target */
+  min-width: 160px;
+}
+.btn-restart:active { transform: scale(0.96); }
+
+/* stage body classes */
+body.stage-pink .blob1 { background: #f5b8ca; opacity: 0.5; }
+body.stage-sing .blob1 { background: #d4b4f5; opacity: 0.55; }
+body.stage-sing .blob2 { background: #b4d4f5; opacity: 0.45; }
+
+.milestone-flash {
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 150;
+  animation: flash-in 0.6s ease forwards;
+}
+@keyframes flash-in {
+  0%   { background: rgba(255,255,255,0); }
+  30%  { background: rgba(255,255,255,0.35); }
+  100% { background: rgba(255,255,255,0); }
+}
+
+.milestone-popup {
+  position: fixed; top: 50%; left: 50%;
+  transform: translate(-50%, -50%) scale(0.6);
+  z-index: 160;
+  background: white;
+  border-radius: 20px;
+  padding: clamp(14px,4vw,18px) clamp(20px,6vw,28px);
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(90,74,58,0.16);
+  opacity: 0; pointer-events: none;
+  font-size: clamp(13px, 3.8vw, 15px);
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+.milestone-popup.pop {
+  animation: popup-bounce 2.2s cubic-bezier(.34,1.56,.64,1) forwards;
+}
+@keyframes popup-bounce {
+  0%   { opacity: 0; transform: translate(-50%,-50%) scale(0.6); }
+  15%  { opacity: 1; transform: translate(-50%,-50%) scale(1.05); }
+  25%  { transform: translate(-50%,-50%) scale(1); }
+  75%  { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%,-50%) scale(0.9); }
+}
+
+/* Very small phones (height < 650px) — compress shelf */
+@media (max-height: 650px) {
+  #shelf { padding-top: 8px; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+  .shelf-title { margin-bottom: 5px; }
+  #item-grid { gap: 5px; }
+  .item-card { min-height: 54px; padding: 5px 3px; }
+  #ruoruo-img { width: clamp(110px, 36vw, 160px); height: clamp(130px, 43vw, 190px); }
+  #ruoruo-emoji { font-size: clamp(60px, 18vw, 80px); }
+}
+</style>
+</head>
+<body>
+
+<div class="bg-blob blob1"></div>
+<div class="bg-blob blob2"></div>
+<div class="bg-blob blob3"></div>
+
+<div id="app">
+  <div id="topbar">
+    <div class="title-row">
+      <span class="game-title">✨ 今日若若幸福計畫</span>
+      <span class="happiness-label" id="happiness-num">0 / 300</span>
+    </div>
+    <div class="bar-track">
+      <div class="bar-milestones">
+        <div class="milestone-dot" style="left:25%" id="m1"></div>
+        <div class="milestone-dot" style="left:50%" id="m2"></div>
+        <div class="milestone-dot" style="left:73%" id="m3"></div>
+        <div class="milestone-dot" style="left:90%" id="m4"></div>
+      </div>
+      <div class="bar-fill" id="bar-fill" style="width:0%"></div>
+    </div>
+    <div id="stage-banner">輕輕送上第一份心意吧 🌿</div>
+  </div>
+
+  <div id="ruoruo-stage">
+    <div id="ruoruo-wrap" class="state-normal">
+      <div class="ruoruo-aura"></div>
+      <div id="combo-badge">🔥 連擊！</div>
+      <img id="ruoruo-img" src="ruoruo_normal.png" alt="若若"
+           onerror="this.style.display='none'; document.getElementById('ruoruo-emoji').style.display='block';">
+      <div id="ruoruo-emoji">🧸</div>
+    </div>
+  </div>
+
+  <div id="shelf">
+    <div class="shelf-title">點擊送出禮物 ↑</div>
+    <div id="item-grid"></div>
+  </div>
+</div>
+
+<div id="win-overlay">
+  <div class="win-card">
+    <div class="win-emoji-big" id="win-emoji">💖</div>
+    <div class="win-title" id="win-title">若若幸福滿溢了！</div>
+    <div class="win-sub" id="win-sub">今天的若若一定超開心 🌸</div>
+    <button class="btn-restart" onclick="restart()">繼續寵愛若若 🌸</button>
+  </div>
+</div>
+
+<div class="milestone-popup" id="milestone-popup"></div>
+
+<script>
+// ── 修正 Line 瀏覽器高度問題 ──────────────────────────────────────
+// Line 的 webview 不支援 dvh，用 window.innerHeight 動態設定
+function fixHeight() {
+  const h = window.innerHeight;
+  document.getElementById('app').style.height = h + 'px';
+}
+fixHeight();
+// resize 時重算（例如鍵盤彈出或旋轉）
+window.addEventListener('resize', fixHeight);
+// Line 有時 load 後高度才穩定
+window.addEventListener('load', () => { setTimeout(fixHeight, 200); });
+
+// ── 常數 ──────────────────────────────────────────────────────────
+const MAX_HAPPINESS = 300;
+const GRID_SIZE = 12;
+
+const ITEM_POOL = [
+  { emoji:'☕️', name:'西西里咖啡', type:'love',    pts:20, reaction:'jump',   burst:'✨' },
+  { emoji:'🎂', name:'草莓蛋糕',   type:'love',    pts:20, reaction:'jump',   burst:'💕' },
+  { emoji:'🫂', name:'Harry抱抱',  type:'love',    pts:25, reaction:'jump',   burst:'💖' },
+  { emoji:'💐', name:'繡球花束',   type:'love',    pts:18, reaction:'jump',   burst:'🌸' },
+  { emoji:'🧋', name:'珍珠奶茶',   type:'like',    pts:14, reaction:'normal', burst:'😊' },
+  { emoji:'🍫', name:'Kit Kat',    type:'like',    pts:14, reaction:'normal', burst:'🍫' },
+  { emoji:'🎵', name:'專屬歌單',   type:'like',    pts:12, reaction:'normal', burst:'🎶' },
+  { emoji:'🍰', name:'下午茶套組', type:'like',    pts:13, reaction:'normal', burst:'🍵' },
+  { emoji:'🌙', name:'晚安貼貼',   type:'like',    pts:11, reaction:'normal', burst:'💤' },
+  { emoji:'🦆', name:'橡皮鴨',    type:'weird',   pts:7,  reaction:'think',  burst:'🤔' },
+  { emoji:'🌵', name:'小仙人掌',   type:'weird',   pts:6,  reaction:'think',  burst:'🌵' },
+  { emoji:'🦕', name:'恐龍玩具',   type:'weird',   pts:8,  reaction:'think',  burst:'🦕' },
+  { emoji:'🪨', name:'一顆石頭',   type:'weird',   pts:5,  reaction:'think',  burst:'🪨' },
+  { emoji:'📎', name:'迴紋針',    type:'weird',   pts:4,  reaction:'think',  burst:'🤏' },
+  { emoji:'📋', name:'加班通知',   type:'dislike', pts:-8, reaction:'frown',  burst:'😤' },
+  { emoji:'🐛', name:'毛毛蟲',    type:'dislike', pts:-10,reaction:'frown',  burst:'😱' },
+  { emoji:'💊', name:'苦藥',      type:'dislike', pts:-6, reaction:'frown',  burst:'🤢' },
+  { emoji:'☎️', name:'奇怪電話',  type:'dislike', pts:-5, reaction:'frown',  burst:'📵' },
+];
+
+const WIN_ENDINGS = [
+  { emoji:'🌈', title:'若若幸福滿溢了！',    sub:'今天的若若肯定笑得合不攏嘴 ☺️' },
+  { emoji:'💖', title:'若若超級無敵幸福！',   sub:'幸福指數爆表，連隔壁都感受到了 🌸' },
+  { emoji:'🎉', title:'若若今天最閃亮！',    sub:'被這麼多寵愛包圍，若若閃閃發光 ✨' },
+  { emoji:'🌸', title:'若若幸福到飛起來！',  sub:'這股幸福的能量可以撐好幾天呢 💕' },
+  { emoji:'🥰', title:'若若心都化了！',      sub:'幸福太多，心臟快裝不下了 💗' },
+];
+
+const MILESTONES = [
+  { pts:  75, msg: '🌟 若若開始動起來了！',   },
+  { pts: 150, msg: '😊 若若笑容藏不住了！',   },
+  { pts: 220, msg: '🎵 若若幸福到要唱歌了！', },
+  { pts: 270, msg: '💖 若若幸福到快爆炸了！', },
+];
+
+const STATE_IMGS = {
+  normal: 'ruoruo_normal.png',
+  jump:   'ruoruo_jump.png',
+  frown:  'ruoruo_frown.png',
+  think:  'ruoruo_think.png',
+  new:    'ruoruo_new.png',
+  sing:   'ruoruo_sing.png',
+  heart:  'ruoruo_heart.png',
+};
+
+// 預先確認每張圖片是否可用
+const imgOK = {};
+let useImages = null; // null = 還沒確定
+Object.entries(STATE_IMGS).forEach(([state, src]) => {
+  const t = new Image();
+  t.onload  = () => {
+    imgOK[state] = true;
+    if (state === 'normal') { useImages = true; showImgIfReady(); }
+  };
+  t.onerror = () => {
+    imgOK[state] = false;
+    if (state === 'normal') { useImages = false; showEmojiMode(); }
+  };
+  t.src = src;
+});
+
+function showImgIfReady() {
+  const img   = document.getElementById('ruoruo-img');
+  const emoji = document.getElementById('ruoruo-emoji');
+  img.style.display   = 'block';
+  emoji.style.display = 'none';
+}
+function showEmojiMode() {
+  const img   = document.getElementById('ruoruo-img');
+  const emoji = document.getElementById('ruoruo-emoji');
+  img.style.display   = 'none';
+  emoji.style.display = 'block';
+}
+
+// ── 狀態 ──────────────────────────────────────────────────────────
+let happiness = 0;
+let combo = 0;
+let comboTimer = null;
+let singnoteTimer = null;
+let stateTimer = null;
+let gridItems = [];
+
+// ── 初始化 ────────────────────────────────────────────────────────
+function init() {
+  gridItems = shufflePool(GRID_SIZE);
+  renderGrid();
+}
+
+function shufflePool(n) {
+  const pool = [...ITEM_POOL].sort(() => Math.random() - 0.5);
+  return Array.from({ length: n }, (_, i) => pool[i % pool.length]);
+}
+
+function pickReplacement(excludeEmoji) {
+  const candidates = ITEM_POOL.filter(x => x.emoji !== excludeEmoji);
+  // 加權：dislike 出現率降低到約 5%，其餘正常
+  const weighted = [];
+  candidates.forEach(item => {
+    const w = item.type === 'dislike' ? 1 : 8;
+    for (let i = 0; i < w; i++) weighted.push(item);
+  });
+  return weighted[Math.floor(Math.random() * weighted.length)];
+}
+
+function renderGrid() {
+  const grid = document.getElementById('item-grid');
+  grid.innerHTML = '';
+  gridItems.forEach((item, i) => grid.appendChild(makeCard(item, i)));
+}
+
+function makeCard(item, slotIdx) {
+  const card = document.createElement('div');
+  card.className = `item-card ${item.type}`;
+  card.dataset.slot = slotIdx;
+  card.innerHTML = `<div class="item-emoji">${item.emoji}</div><div class="item-name">${item.name}</div>`;
+  card.addEventListener('click', () => sendItem(slotIdx, card));
+  return card;
+}
+
+// ── 送出物品 ──────────────────────────────────────────────────────
+function sendItem(slotIdx, card) {
+  if (card.classList.contains('sending')) return;
+  card.classList.add('sending');
+
+  const item = gridItems[slotIdx];
+  const cardRect = card.getBoundingClientRect();
+
+  card.style.transition = 'transform 0.22s ease, opacity 0.22s ease';
+  card.style.transform = 'scale(0.6) translateY(-10px)';
+  card.style.opacity = '0';
+
+  flyItem(item.emoji, cardRect, () => applyItem(item));
+  setTimeout(() => replaceCard(slotIdx, item.emoji), 260);
+}
+
+function replaceCard(slotIdx, oldEmoji) {
+  const grid = document.getElementById('item-grid');
+  const newItem = pickReplacement(oldEmoji);
+  gridItems[slotIdx] = newItem;
+
+  const newCard = makeCard(newItem, slotIdx);
+  newCard.style.opacity = '0';
+  newCard.style.transform = 'scale(0.7) translateY(8px)';
+
+  const oldCard = grid.querySelector(`[data-slot="${slotIdx}"]`);
+  if (oldCard) grid.replaceChild(newCard, oldCard);
+  else grid.appendChild(newCard);
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      newCard.style.transition = 'transform 0.3s cubic-bezier(.34,1.56,.64,1), opacity 0.25s ease';
+      newCard.style.opacity = '1';
+      newCard.style.transform = 'scale(1) translateY(0)';
+    });
+  });
+}
+
+function flyItem(emoji, fromRect, onLand) {
+  const el = document.createElement('div');
+  el.className = 'flying-item';
+  el.textContent = emoji;
+  document.body.appendChild(el);
+
+  const startX = fromRect.left + fromRect.width / 2 - 18;
+  const startY = fromRect.top  + fromRect.height / 2 - 18;
+  const ruoruo = document.getElementById('ruoruo-wrap');
+  const tgt    = ruoruo.getBoundingClientRect();
+  const endX   = tgt.left + tgt.width / 2 - 18;
+  const endY   = tgt.top  + tgt.height / 2 - 18;
+
+  el.style.left = startX + 'px';
+  el.style.top  = startY + 'px';
+
+  let t0 = null;
+  const dur = 460;
+
+  (function step(ts) {
+    if (!t0) t0 = ts;
+    const p    = Math.min((ts - t0) / dur, 1);
+    const ease = 1 - Math.pow(1 - p, 3);
+    const arc  = Math.sin(p * Math.PI) * -70;
+
+    el.style.left      = (startX + (endX - startX) * ease) + 'px';
+    el.style.top       = (startY + (endY - startY) * ease + arc) + 'px';
+    el.style.transform = `scale(${1 + p * 0.3}) rotate(${p * 20}deg)`;
+    el.style.opacity   = p > 0.85 ? String(1 - (p - 0.85) / 0.15) : '1';
+
+    if (p < 1) requestAnimationFrame(step);
+    else { el.remove(); onLand(); }
+  })(performance.now());
+}
+
+// ── 套用效果 ──────────────────────────────────────────────────────
+function applyItem(item) {
+  if (item.pts > 0) {
+    combo++;
+    clearTimeout(comboTimer);
+    comboTimer = setTimeout(() => { combo = 0; hideCombo(); }, 3000);
+  } else {
+    combo = 0; clearTimeout(comboTimer); hideCombo();
+  }
+
+  let pts = item.pts;
+  if (combo >= 3 && item.pts > 0) { pts = Math.round(pts * 1.3); showCombo(combo); }
+  else if (item.pts <= 0 || combo < 3) hideCombo();
+
+  const prev = happiness;
+  happiness = Math.max(0, Math.min(MAX_HAPPINESS, happiness + pts));
+
+  MILESTONES.forEach((m, i) => { if (prev < m.pts && happiness >= m.pts) triggerMilestone(m, i); });
+
+  updateBar();
+  setRuoruo(item.reaction);
+  spawnBurst(item.burst);
+
+  if (happiness >= MAX_HAPPINESS) setTimeout(triggerWin, 800);
+}
+
+// ── 進度條 ────────────────────────────────────────────────────────
+function updateBar() {
+  const pct = (happiness / MAX_HAPPINESS) * 100;
+  document.getElementById('bar-fill').style.width = pct + '%';
+  document.getElementById('happiness-num').textContent = happiness + ' / ' + MAX_HAPPINESS;
+
+  MILESTONES.forEach((m, i) => {
+    document.getElementById('m' + (i + 1))?.classList.toggle('passed', happiness >= m.pts);
+  });
+
+  const banner = document.getElementById('stage-banner');
+  if      (happiness >= 270) { banner.textContent = '若若已經幸福到快飛起來了 💕'; banner.style.color = '#e070b0'; }
+  else if (happiness >= 220) { banner.textContent = '若若在唱歌了 🎵 超幸福～';    banner.style.color = '#9b6fcf'; }
+  else if (happiness >= 150) { banner.textContent = '若若笑得合不攏嘴了！ 😊';    banner.style.color = '#f2a7b8'; }
+  else if (happiness >=  75) { banner.textContent = '若若開始動起來了！ 🌟';       banner.style.color = '#d4a882'; }
+  else                        { banner.textContent = '輕輕送上第一份心意吧 🌿';    banner.style.color = ''; }
+}
+
+// ── 里程碑 ────────────────────────────────────────────────────────
+function triggerMilestone(m, idx) {
+  flashScreen();
+  showMilestonePopup(m.msg);
+  if (idx === 0) { document.body.classList.add('stage-pink'); setRuoruo('new'); }
+  if (idx === 2) { document.body.classList.add('stage-sing'); setRuoruo('sing'); startSingNotes(); }
+  if (idx === 3) spawnHearts(15);
+}
+
+function flashScreen() {
+  const el = document.createElement('div');
+  el.className = 'milestone-flash';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 600);
+}
+
+function showMilestonePopup(msg) {
+  const el = document.getElementById('milestone-popup');
+  el.textContent = msg;
+  el.classList.remove('pop');
+  void el.offsetWidth;
+  el.classList.add('pop');
+  setTimeout(() => el.classList.remove('pop'), 2200);
+}
+
+// ── 若若狀態 ──────────────────────────────────────────────────────
+function setRuoruo(reaction) {
+  const wrap = document.getElementById('ruoruo-wrap');
+  wrap.className = `state-${reaction}`;
+
+  if (useImages === true) {
+    const img = document.getElementById('ruoruo-img');
+    // 如果這個狀態的圖片有成功載入就換，否則 fallback 到 normal
+    const src = (imgOK[reaction] !== false)
+      ? STATE_IMGS[reaction]
+      : STATE_IMGS.normal;
+    if (img.src !== location.origin + '/' + src &&
+        img.src !== src) {
+      img.src = src;
+    }
+  }
+
+  clearTimeout(stateTimer);
+  if (!['new','sing'].includes(reaction)) {
+    stateTimer = setTimeout(() => setRuoruo(getBaseState()), 1600);
+  }
+}
+
+function getBaseState() {
+  if (happiness >= 220) return 'sing';
+  if (happiness >=  75) return 'new';
+  return 'normal';
+}
+
+function startSingNotes() {
+  clearInterval(singnoteTimer);
+  singnoteTimer = setInterval(() => {
+    const wrap = document.getElementById('ruoruo-wrap');
+    const note = document.createElement('div');
+    note.className = 'music-note';
+    note.textContent = ['🎵','🎶','♪','♫'][Math.floor(Math.random() * 4)];
+    note.style.left = (Math.random() * 80 - 10) + 'px';
+    note.style.top  = '10px';
+    wrap.appendChild(note);
+    setTimeout(() => note.remove(), 2000);
+  }, 1200);
+}
+
+function spawnBurst(emoji) {
+  const wrap  = document.getElementById('ruoruo-wrap');
+  const burst = document.createElement('div');
+  burst.className = 'reaction-burst';
+  burst.textContent = emoji;
+  burst.style.left = (20 + Math.random() * 60) + '%';
+  burst.style.top  = '10%';
+  wrap.appendChild(burst);
+  setTimeout(() => burst.remove(), 800);
+}
+
+function showCombo(n) {
+  const b = document.getElementById('combo-badge');
+  b.textContent = `🔥 ${n} 連擊！`;
+  b.classList.add('show');
+}
+function hideCombo() { document.getElementById('combo-badge').classList.remove('show'); }
+
+function spawnHearts(count) {
+  for (let i = 0; i < count; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'heart-particle';
+      el.textContent = ['💕','💖','🌸','✨','💝'][Math.floor(Math.random() * 5)];
+      el.style.left     = (10 + Math.random() * 80) + 'vw';
+      el.style.top      = (20 + Math.random() * 60) + 'vh';
+      el.style.fontSize = (16 + Math.random() * 14) + 'px';
+      el.style.setProperty('--dur',  (1.5 + Math.random()) + 's');
+      el.style.setProperty('--rot',  (Math.random() * 40 - 20) + 'deg');
+      el.style.setProperty('--rot2', (Math.random() * 40 - 20) + 'deg');
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 3000);
+    }, i * 80);
+  }
+}
+
+function triggerWin() {
+  setRuoruo('heart');
+  spawnHearts(40);
+  clearInterval(singnoteTimer);
+  const ending = WIN_ENDINGS[Math.floor(Math.random() * WIN_ENDINGS.length)];
+  document.getElementById('win-emoji').textContent = ending.emoji;
+  document.getElementById('win-title').textContent = ending.title;
+  document.getElementById('win-sub').textContent   = ending.sub;
+  setTimeout(() => document.getElementById('win-overlay').classList.add('show'), 1400);
+}
+
+function restart() {
+  happiness = 0; combo = 0;
+  clearInterval(singnoteTimer); clearTimeout(stateTimer); clearTimeout(comboTimer);
+  document.getElementById('win-overlay').classList.remove('show');
+  document.getElementById('bar-fill').style.width = '0%';
+  document.getElementById('happiness-num').textContent = '0 / ' + MAX_HAPPINESS;
+  document.body.classList.remove('stage-pink', 'stage-sing');
+  [1,2,3,4].forEach(i => document.getElementById('m'+i)?.classList.remove('passed'));
+  document.getElementById('stage-banner').textContent = '輕輕送上第一份心意吧 🌿';
+  document.getElementById('stage-banner').style.color = '';
+  hideCombo();
+  gridItems = shufflePool(GRID_SIZE);
+  setRuoruo('normal');
+  renderGrid();
+}
+
+init();
+</script>
+</body>
+</html>
