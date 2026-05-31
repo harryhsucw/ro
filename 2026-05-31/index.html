@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>若若的許願瓶</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap');
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Zen Maru Gothic', "PingFang TC", "Microsoft JhengHei", sans-serif;
+            background: #d6eaf5;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .page {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 36px 20px 48px;
+            gap: 16px;
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .title-block { text-align: center; }
+        .title-main {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1a3a5c;
+            letter-spacing: 1px;
+        }
+        .title-sub {
+            font-size: 0.85rem;
+            color: #6a9ab8;
+            margin-top: 5px;
+        }
+
+        /* 瓶子圖片：mix-blend-mode 去黑色背景 */
+        .bottle-wrap {
+            position: relative;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            width: 280px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .bottle-img {
+            width: 100%;
+            /* multiply 讓黑色消失，保留插畫 */
+            mix-blend-mode: multiply;
+            transform-origin: center bottom;
+            transition: filter 0.2s;
+            pointer-events: none;
+        }
+
+        /* 搖晃動畫 */
+        @keyframes shake {
+            0%   { transform: rotate(0deg) translateX(0); }
+            12%  { transform: rotate(-10deg) translateX(-4px); }
+            28%  { transform: rotate(12deg) translateX(4px); }
+            44%  { transform: rotate(-9deg) translateX(-3px); }
+            60%  { transform: rotate(10deg) translateX(3px); }
+            76%  { transform: rotate(-6deg) translateX(-2px); }
+            90%  { transform: rotate(4deg) translateX(1px); }
+            100% { transform: rotate(0deg) translateX(0); }
+        }
+        .shaking .bottle-img {
+            animation: shake 0.6s ease-in-out;
+        }
+
+        /* 點擊提示光暈 */
+        @keyframes glowPulse {
+            0%,100% { filter: drop-shadow(0 0 8px rgba(100,180,240,0.3)); }
+            50%      { filter: drop-shadow(0 0 20px rgba(100,180,240,0.6)); }
+        }
+        .bottle-img { animation: glowPulse 2.5s infinite; }
+        .shaking .bottle-img { animation: shake 0.6s ease-in-out; }
+
+        /* 泡泡 */
+        .bubble {
+            position: fixed;
+            border-radius: 50%;
+            background: rgba(180,220,245,0.6);
+            border: 1px solid rgba(255,255,255,0.7);
+            pointer-events: none;
+            animation: bubbleRise var(--dur) ease-out forwards;
+        }
+        @keyframes bubbleRise {
+            0%   { transform: translateY(0) scale(1); opacity: 0.8; }
+            100% { transform: translateY(var(--rise)) scale(0.3); opacity: 0; }
+        }
+
+        /* 提示 */
+        .hint {
+            font-size: 0.88rem;
+            color: #6a9ab8;
+            text-align: center;
+            animation: pulse 2s infinite;
+            transition: opacity 0.4s;
+        }
+        .hint.hide { opacity: 0; pointer-events: none; }
+        @keyframes pulse {
+            0%,100% { opacity: 0.5; }
+            50%      { opacity: 1; }
+        }
+
+        /* ── 紙條 overlay ── */
+        .scroll-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(20,50,80,0.4);
+            backdrop-filter: blur(4px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.35s ease;
+        }
+        .scroll-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* 紙條卡片 */
+        .scroll-card {
+            position: relative;
+            width: 290px;
+            background: #fffdf5;
+            border-radius: 6px;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.22);
+            transform: translateY(80px) rotate(2deg) scaleY(0.05);
+            transform-origin: top center;
+            opacity: 0;
+            transition: transform 0.55s cubic-bezier(0.175,0.885,0.32,1.275) 0.05s,
+                        opacity 0.35s ease 0.05s;
+        }
+        .scroll-overlay.show .scroll-card {
+            transform: translateY(0) rotate(-0.8deg) scaleY(1);
+            opacity: 1;
+        }
+
+        /* 捲邊頂部 */
+        .scroll-top {
+            height: 16px;
+            background: repeating-linear-gradient(
+                90deg,
+                #ede0c0 0, #ede0c0 9px,
+                #e0d0a8 9px, #e0d0a8 18px
+            );
+            border-radius: 6px 6px 0 0;
+            position: relative;
+        }
+        .scroll-top::after {
+            content: '';
+            position: absolute;
+            bottom: -8px; left: 0; right: 0;
+            height: 14px;
+            background: #fffdf5;
+            border-radius: 0 0 60% 60% / 0 0 10px 10px;
+        }
+
+        /* 稿紙本體 */
+        .scroll-body {
+            padding: 26px 28px 20px;
+            background:
+                repeating-linear-gradient(
+                    transparent, transparent 31px,
+                    #ddeef8 31px, #ddeef8 32px
+                );
+            background-size: 100% 32px;
+            background-position: 0 14px;
+            text-align: center;
+        }
+        .scroll-date {
+            font-size: 0.58rem;
+            color: #aac4d8;
+            letter-spacing: 3px;
+            margin-bottom: 18px;
+            font-weight: 400;
+        }
+        .scroll-emoji {
+            font-size: 2.5rem;
+            display: block;
+            margin-bottom: 12px;
+            line-height: 1;
+        }
+        .scroll-label {
+            font-size: 0.78rem;
+            color: #5b7a60;
+            letter-spacing: 3px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        .scroll-text {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #3a2e1e;
+            line-height: 2;
+            white-space: pre-line;
+        }
+
+        /* 捲邊底部 */
+        .scroll-bottom {
+            height: 16px;
+            background: repeating-linear-gradient(
+                90deg,
+                #ede0c0 0, #ede0c0 9px,
+                #e0d0a8 9px, #e0d0a8 18px
+            );
+            border-radius: 0 0 6px 6px;
+            position: relative;
+            margin-top: 8px;
+        }
+        .scroll-bottom::before {
+            content: '';
+            position: absolute;
+            top: -8px; left: 0; right: 0;
+            height: 14px;
+            background: #fffdf5;
+            border-radius: 60% 60% 0 0 / 10px 10px 0 0;
+        }
+
+        .scroll-btn {
+            display: block;
+            width: calc(100% - 56px);
+            margin: 18px auto 22px;
+            background: #4a9cc7;
+            color: #fff;
+            border: none;
+            padding: 12px;
+            font-family: 'Zen Maru Gothic', "PingFang TC", sans-serif;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border-radius: 50px;
+            cursor: pointer;
+            letter-spacing: 1px;
+            transition: filter 0.2s, transform 0.15s;
+        }
+        .scroll-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+
+        /* 粒子 */
+        .ptcl {
+            position: fixed;
+            pointer-events: none;
+            z-index: 200;
+            font-size: 1rem;
+            animation: fly 1s ease-out forwards;
+        }
+        @keyframes fly {
+            0%   { transform: translate(0,0) scale(1); opacity: 1; }
+            100% { transform: translate(var(--sx),var(--sy)) scale(0); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="page">
+
+    <div class="title-block">
+        <div class="title-main">若若的許願瓶 🫙</div>
+        <div class="title-sub">搖一搖，看看今天的祝福籤</div>
+    </div>
+
+    <div class="bottle-wrap" id="bottle-wrap" onclick="triggerShake()">
+        <img class="bottle-img"
+             src="Gemini_Generated_Image_9yvmej9yvmej9yvm_1.png"
+             alt="許願瓶"
+             onerror="this.style.display='none'">
+    </div>
+
+    <div class="hint" id="hint">📱 搖手機 或 點擊瓶子</div>
+
+</div>
+
+<!-- 紙條彈出 -->
+<div class="scroll-overlay" id="scroll-overlay" onclick="handleOverlayClick(event)">
+    <div class="scroll-card" onclick="event.stopPropagation()">
+        <div class="scroll-top"></div>
+        <div class="scroll-body">
+            <div class="scroll-date" id="scroll-date">若若專屬</div>
+            <span class="scroll-emoji" id="scroll-emoji">🌟</span>
+            <div class="scroll-label">✦ 今日祝福籤 ✦</div>
+            <div class="scroll-text" id="scroll-text">...</div>
+        </div>
+        <div class="scroll-bottom"></div>
+        <button class="scroll-btn" onclick="closeScroll()">收下這份祝福 ✨</button>
+    </div>
+</div>
+
+<script>
+    const messages = [
+        { emoji:"🌸", text:"今天的若若，\n閃閃發光，誰也比不上。" },
+        { emoji:"☀️", text:"辛苦了一整天，\n今晚好好休息，下週繼續加油！" },
+        { emoji:"💪", text:"新工作不容易，\n但你每天都在進步，真的很棒。" },
+        { emoji:"🍀", text:"好運已經悄悄\n跟著若若了，放心前進吧！" },
+        { emoji:"🌙", text:"洗完澡的若若\n香香的、美美的，今晚好夢連連。" },
+        { emoji:"🎯", text:"若若最強！\n這些挑戰都是小菜一碟啦！" },
+        { emoji:"🫧", text:"泡泡帶走所有煩惱，\n若若今天只剩開心。" },
+        { emoji:"💛", text:"你不需要完美，\n你只需要是你自己，那就夠了。" },
+        { emoji:"🌈", text:"困難是暫時的，\n若若的可愛是永久的！" },
+        { emoji:"🦋", text:"每一天都是新開始，\n今天的若若比昨天更厲害。" },
+    ];
+
+    const wrap = document.getElementById('bottle-wrap');
+    const hint = document.getElementById('hint');
+    const overlay = document.getElementById('scroll-overlay');
+    const scrollEmoji = document.getElementById('scroll-emoji');
+    const scrollText = document.getElementById('scroll-text');
+    const scrollDate = document.getElementById('scroll-date');
+
+    let shaking = false;
+    let lastShakeTime = 0;
+
+    // 手機搖晃偵測
+    let lastAcc = null;
+    function handleMotion(e) {
+        const acc = e.accelerationIncludingGravity;
+        if (!acc || !lastAcc) { lastAcc = acc; return; }
+        const delta = Math.abs(acc.x - lastAcc.x)
+                    + Math.abs(acc.y - lastAcc.y)
+                    + Math.abs(acc.z - lastAcc.z);
+        lastAcc = acc;
+        if (delta > 18 && Date.now() - lastShakeTime > 1200) {
+            lastShakeTime = Date.now();
+            triggerShake();
+        }
+    }
+
+    function requestMotion() {
+        if (typeof DeviceMotionEvent !== 'undefined'
+            && typeof DeviceMotionEvent.requestPermission === 'function') {
+            DeviceMotionEvent.requestPermission()
+                .then(s => { if (s === 'granted') window.addEventListener('devicemotion', handleMotion); })
+                .catch(()=>{});
+        } else {
+            window.addEventListener('devicemotion', handleMotion);
+        }
+    }
+    wrap.addEventListener('click', requestMotion, { once: true });
+
+    function triggerShake() {
+        if (shaking) return;
+        shaking = true;
+        wrap.classList.add('shaking');
+        spawnBubbles();
+        setTimeout(() => {
+            wrap.classList.remove('shaking');
+            shaking = false;
+            showScroll();
+        }, 650);
+    }
+
+    function spawnBubbles() {
+        const rect = wrap.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height * 0.6;
+        for (let i = 0; i < 8; i++) {
+            setTimeout(() => {
+                const b = document.createElement('div');
+                b.className = 'bubble';
+                const size = 5 + Math.random() * 9;
+                b.style.cssText = `
+                    width:${size}px; height:${size}px;
+                    left:${cx + (Math.random()-0.5)*80}px;
+                    top:${cy + (Math.random()-0.5)*40}px;
+                    --dur:${0.55+Math.random()*0.5}s;
+                    --rise:${-(55+Math.random()*65)}px;
+                `;
+                document.body.appendChild(b);
+                b.addEventListener('animationend', ()=>b.remove());
+            }, i * 55);
+        }
+    }
+
+    function showScroll() {
+        const m = messages[Math.floor(Math.random() * messages.length)];
+        scrollEmoji.innerText = m.emoji;
+        scrollText.innerText  = m.text;
+
+        const now = new Date();
+        scrollDate.innerText = `${now.getFullYear()} · ${now.getMonth()+1}月${now.getDate()}日 · 若若專屬`;
+
+        hint.classList.add('hide');
+        overlay.classList.add('show');
+        sparkle();
+    }
+
+    function closeScroll() {
+        overlay.classList.remove('show');
+        setTimeout(()=> hint.classList.remove('hide'), 400);
+    }
+
+    function handleOverlayClick(e) {
+        if (e.target === overlay) closeScroll();
+    }
+
+    function sparkle() {
+        ['✨','⭐','💙','🌸','🫧','💫'].forEach((s,i) => {
+            for (let j=0; j<2; j++) setTimeout(()=>{
+                const el = document.createElement('div');
+                el.className = 'ptcl'; el.innerText = s;
+                el.style.left = (15+Math.random()*70)+'vw';
+                el.style.top  = (20+Math.random()*55)+'vh';
+                el.style.setProperty('--sx', (Math.random()-.5)*80+'px');
+                el.style.setProperty('--sy', -(30+Math.random()*70)+'px');
+                document.body.appendChild(el);
+                el.addEventListener('animationend',()=>el.remove());
+            }, (i*2+j)*65);
+        });
+    }
+</script>
+</body>
+</html>
