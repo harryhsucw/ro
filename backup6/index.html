@@ -587,7 +587,11 @@ async function submitMood() {
     });
 
     const data = await resp.json();
+    console.log('[Worker 回傳]', JSON.stringify(data));
+
     const raw = data.content?.[0]?.text || '';
+    console.log('[raw text]', raw);
+
     const cleaned = raw.replace(/```json|```/g, '').trim();
     const result = JSON.parse(cleaned);
 
@@ -596,6 +600,7 @@ async function submitMood() {
     renderReport(result, `${d.getMonth()+1}/${d.getDate()}`);
 
   } catch (err) {
+    console.error('[錯誤]', err);
     clearInterval(loadingTimer);
     // API 失敗時 fallback 到本地診斷引擎
     const result = diagnose(input);
