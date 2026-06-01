@@ -344,9 +344,11 @@ async function submitMood() {
     }
 
     const data = await resp.json();
-    const raw = data.content?.[0]?.text || '';
 
-    if (!raw) throw new Error('回傳內容為空');
+    // Gemini 格式：candidates[0].content.parts[0].text
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    if (!raw) throw new Error('回傳內容為空：' + JSON.stringify(data).slice(0, 100));
 
     const cleaned = raw.replace(/```json|```/g, '').trim();
     const result = JSON.parse(cleaned);
