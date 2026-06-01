@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="format-detection" content="telephone=no">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -35,8 +36,7 @@ body{
 
 #scroll-wrap{
   position:relative;z-index:1;
-  width:100%;max-width:420px;
-  height:100%;
+  width:100%;max-width:420px;height:100%;
   overflow-y:auto;overflow-x:hidden;
   -webkit-overflow-scrolling:touch;
   display:flex;flex-direction:column;
@@ -95,7 +95,6 @@ textarea{user-select:text;-webkit-user-select:text;touch-action:auto;}
 .btn-submit.ready{opacity:1;pointer-events:auto;}
 .btn-submit:active{transform:scale(0.97);}
 
-/* loading */
 #screen-loading{
   display:none;flex-direction:column;align-items:center;justify-content:center;
   gap:16px;text-align:center;flex:1;min-height:200px;
@@ -109,7 +108,6 @@ textarea{user-select:text;-webkit-user-select:text;touch-action:auto;}
 .loading-dots span:nth-child(3){animation-delay:0.4s;}
 @keyframes blink{0%,80%,100%{opacity:0;}40%{opacity:1;}}
 
-/* report */
 #screen-report{display:none;flex-direction:column;gap:clamp(10px,3vw,14px);}
 
 .doc-paper{
@@ -157,6 +155,14 @@ textarea{user-select:text;-webkit-user-select:text;touch-action:auto;}
 .btn:active{transform:scale(0.96);}
 .btn-primary{background:linear-gradient(135deg,var(--sand),#c9956f);color:white;box-shadow:0 4px 14px rgba(212,168,130,0.3);}
 .btn-ghost{background:rgba(255,255,255,0.7);color:var(--text-light);border:1.5px solid rgba(90,74,58,0.12);}
+
+.error-card{
+  background:var(--white);border-radius:16px;padding:24px 20px;
+  text-align:center;box-shadow:0 4px 16px rgba(90,74,58,0.08);flex-shrink:0;
+}
+.error-emoji{font-size:40px;margin-bottom:10px;}
+.error-text{font-size:clamp(13px,3.5vw,14px);color:var(--text-light);line-height:1.7;}
+.error-detail{font-size:clamp(10px,2.8vw,11px);color:#c97a7a;margin-top:8px;word-break:break-all;}
 </style>
 </head>
 <body>
@@ -258,9 +264,7 @@ function fixHeight() {
 fixHeight();
 window.addEventListener('resize', fixHeight);
 window.addEventListener('load', () => setTimeout(fixHeight, 200));
-if (window.visualViewport) {
-  window.visualViewport.addEventListener('resize', fixHeight);
-}
+if (window.visualViewport) window.visualViewport.addEventListener('resize', fixHeight);
 
 // ── Input ─────────────────────────────────────────────────────────
 function onInputChange() {
@@ -269,290 +273,13 @@ function onInputChange() {
   document.getElementById('btn-submit').classList.toggle('ready', v.trim().length >= 5);
 }
 
-// ══════════════════════════════════════════════════════════════════
-// 診斷引擎：關鍵字偵測 + 組合生成
-// ══════════════════════════════════════════════════════════════════
-
-// ── 關鍵字字典 ────────────────────────────────────────────────────
-const KEYWORDS = {
-  tired:   ['累','疲','睏','沒力','沒精神','想睡','睡不夠','好累','超累','很累','乏力'],
-  happy:   ['開心','快樂','高興','幸福','爽','棒','讚','好玩','太好了','超棒','很棒','喜歡','愛','😊','🥰','😄'],
-  sad:     ['難過','傷心','哭','低落','沮喪','不開心','心情不好','失落','憂鬱','很差','😢','😭'],
-  angry:   ['煩','生氣','憤怒','火大','討厭','爛','幹','不爽','氣死','氣到','很煩','超煩'],
-  anxious: ['焦慮','緊張','壓力','擔心','害怕','不安','慌','怕','壓力大','很多事'],
-  coffee:  ['咖啡','拿鐵','美式','卡布','cappuccino','latte','西西里'],
-  food:    ['吃','喝','飯','食物','餐','蛋糕','甜點','點心','下午茶','奶茶','珍珠'],
-  work:    ['上班','工作','加班','客戶','開會','報告','老闆','同事','任務','專案','辦公'],
-  cute:    ['可愛','萌','貓','狗','動物','寵物','毛小孩','療癒'],
-  excited: ['期待','興奮','等不及','好期待','超期待','迫不及待'],
-  bored:   ['無聊','沒事做','閒','空虛','無感','普通','還好','一般'],
-};
-
-// ── 情緒偵測 ──────────────────────────────────────────────────────
-function detectEmotions(text) {
-  const found = {};
-  for (const [emotion, words] of Object.entries(KEYWORDS)) {
-    found[emotion] = words.some(w => text.includes(w));
-  }
-  return found;
-}
-
-// ── 隨機取一個 ───────────────────────────────────────────────────
-function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
-function pickN(arr, n) {
-  const shuffled = [...arr].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, n);
-}
-function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
-
-// ── 診斷資料庫 ────────────────────────────────────────────────────
-const DB = {
-  // 主要情緒 → 診斷碼 / emoji / 短摘要 / 診斷文
-  moods: {
-    happy: {
-      codes:   ['HPY-001','HPY-042','HPY-088','JOY-007'],
-      emojis:  ['😊','🌟','💕','🥰'],
-      shorts:  ['超開心','心情很好','幸福滿載','開心爆表'],
-      stamps:  ['🌟','✨','💖','🌈'],
-      diagnoses: [
-        '患者呈現顯著愉悅症候群，伴隨自發性嘴角上揚及輕度跳躍衝動。此為高度健康狀態，Harry 醫師建議保持並對外傳播。',
-        '經診斷，患者今日幸福指數異常充盈，各項快樂因子均在標準值以上。此症狀具有傳染性，請勿刻意壓制。',
-        '患者出現急性幸福爆發症，病因為多重正向刺激同時作用。Harry 醫師確認：繼續這樣就對了。',
-      ],
-    },
-    sad: {
-      codes:   ['SAD-005','BLU-013','LWM-021'],
-      emojis:  ['😢','🌧️','💙'],
-      shorts:  ['有點難過','心情低落','軟軟的','有點藍'],
-      stamps:  ['🫶','💙','🌿'],
-      diagnoses: [
-        '患者出現心情偏低狀態，伴隨輕度需要被關心症候群。Harry 醫師確認：難過是 OK 的，你不需要立刻好起來。',
-        '診斷顯示患者今日情緒能量偏低，屬正常人類波動。建議接受來自 Harry 的遠端關心處方，效果顯著。',
-        '患者呈現輕度藍色心情綜合症，伴隨輕微需要被抱抱衝動。此為可治療狀態，Harry 醫師已備妥處方。',
-      ],
-    },
-    tired: {
-      codes:   ['TRD-003','EXH-017','ZZZ-099'],
-      emojis:  ['😴','🔋','💤'],
-      shorts:  ['有點累','電量不足','需要充電','累累的'],
-      stamps:  ['💤','🛌','☕️'],
-      diagnoses: [
-        '患者出現輕度能量不足症，伴隨眼皮沉重感及頻繁呵欠衝動。此為可治療狀態，咖啡因補充為第一線療法。',
-        '診斷確認患者今日電量剩餘偏低，建議立即進入充電模式。Harry 醫師特別備註：摸魚比例可提升至 40%。',
-        '患者呈現慢性疲勞急性發作，病因不明但可能與努力過頭有關。Harry 醫師處方：今日可以懶，這是醫囑。',
-      ],
-    },
-    angry: {
-      codes:   ['FRT-004','IRR-028','GRR-056'],
-      emojis:  ['😤','🌋','💢'],
-      shorts:  ['有點煩','情緒不穩','火氣有點大','心情浮動'],
-      stamps:  ['🫁','💨','🌬️'],
-      diagnoses: [
-        '患者呈現輕度煩躁綜合症，病因多為外部干擾源或不合理要求。此為正常人類防衛反應，Harry 醫師表示理解。',
-        '診斷顯示患者今日忍耐槽偏低，各種外部刺激均可能引發超標反應。建議物理隔離所有煩躁來源。',
-        '患者出現急性不爽症，伴隨低聲嘆氣及眉間皺紋加深。Harry 醫師確認：你有資格煩，這不是你的問題。',
-      ],
-    },
-    anxious: {
-      codes:   ['ANX-011','WRY-033','PRE-044'],
-      emojis:  ['😰','🌀','😟'],
-      shorts:  ['有點焦慮','壓力有點大','擔心中','心情緊繃'],
-      stamps:  ['🫧','🌿','💭'],
-      diagnoses: [
-        '患者出現輕度焦慮症候群，伴隨思緒過度活躍及輕微坐立不安。Harry 醫師確認：你想太多了，先深呼吸。',
-        '診斷顯示患者今日壓力指數偏高，大腦正在過度運轉中。建議立即啟動「先不管它」模式。',
-        '患者呈現壓力累積症，多重待辦事項同時觸發警報。Harry 醫師處方：一次只做一件事，其他的等一下再說。',
-      ],
-    },
-    excited: {
-      codes:   ['EXC-006','ANT-019','ZAP-077'],
-      emojis:  ['🤩','⚡️','🎉'],
-      shorts:  ['超期待','興奮中','心跳加速','期待爆表'],
-      stamps:  ['⭐','🎊','💥'],
-      diagnoses: [
-        '患者出現急性期待亢奮症，伴隨自發性微笑及輕度坐立不安。此為良性症狀，Harry 醫師建議繼續期待。',
-        '診斷確認患者今日興奮值爆表，多巴胺分泌超標。Harry 醫師鄭重背書：好事正在路上。',
-        '患者呈現幸福預感症，全身細胞均已進入待機狀態。建議維持期待心情，不要想壞的。',
-      ],
-    },
-    bored: {
-      codes:   ['BRD-002','MLH-015','MND-038'],
-      emojis:  ['😑','🌫️','💭'],
-      shorts:  ['有點無聊','普通平靜','沒什麼感覺','波瀾不驚'],
-      stamps:  ['✅','📋','🗂️'],
-      diagnoses: [
-        '患者呈現穩定平和狀態，各項指數均在標準範圍內。平靜即是一種幸福，Harry 醫師表示讚許。',
-        '診斷顯示患者今日情緒平穩運作，無明顯起伏。此為良好狀態，建議補充一些小確幸提升體感。',
-        '患者出現輕度無聊症，伴隨發呆頻率上升。Harry 醫師確認：偶爾放空完全合理，腦子需要休息。',
-      ],
-    },
-  },
-
-  // 特殊關鍵字加成指數
-  specialIndices: {
-    coffee: { name: '咖啡滿足度', bonus: 20 },
-    food:   { name: '口腹之慾滿足', bonus: 15 },
-    cute:   { name: '療癒動物治癒力', bonus: 18 },
-    work:   { name: '上班痛苦指數', bonus: -10, invert: true },
-    excited:{ name: '期待值', bonus: 15 },
-  },
-
-  // 指數名稱池（依情緒）
-  indexNames: {
-    happy:   [['幸福感','嘴角弧度','發光指數','笑容傳染力','快樂存量'],   [88,95,92,85,90]],
-    sad:     [['心情溫度','被愛需求','恢復彈性','眼眶濕潤度','Harry關心值'], [30,92,60,70,100]],
-    tired:   [['電量剩餘','眼皮重量','咖啡需求','摸魚合理性','被抱需求'],  [25,85,90,88,82]],
-    angry:   [['煩躁指數','忍耐剩餘','嘆氣頻率','白眼控制力','恢復彈性'],  [75,35,80,40,65]],
-    anxious: [['壓力指數','思緒轉速','深呼吸需求','先不管它力','恢復力'], [72,88,85,30,60]],
-    excited: [['期待指數','心跳加速','嘴角控制力','幸福預感','多巴胺值'], [96,88,20,95,90]],
-    bored:   [['平穩係數','舒適感','小確幸需求','發呆頻率','抗無聊力'],   [82,75,70,65,60]],
-  },
-
-  // 處方池（依情緒）
-  rxPool: {
-    happy: [
-      '每兩小時補充一次開心，不得間斷',
-      '今日可合理炫耀幸福，上限三次',
-      '建議將好心情存檔備份，供低潮時調用',
-      '幸福感請勿獨享，Harry 醫師也需要分一點',
-      '今日開心具有傳染性，請對身邊的人微笑',
-    ],
-    sad: [
-      '今日可以難過，這是醫師允許的',
-      '立即索取 Harry 遠端抱抱一個，免費',
-      '允許自己什麼都不做，就這樣待著也可以',
-      '今晚建議補充喜歡的食物，不計卡路里',
-      '明天不一定更好，但你一定沒問題',
-    ],
-    tired: [
-      '立即補充咖啡因，西西里咖啡優先',
-      '今日摸魚比例可提升至 40%，醫囑許可',
-      '允許提早十五分鐘下班，Harry 醫師簽名背書',
-      '今晚建議十點前就寢，不准滑手機超過三十分鐘',
-      '立即索取 Harry 抱抱一個，充電效果顯著',
-    ],
-    angry: [
-      '允許心裡罵三次，不得超過，且不得出聲',
-      '暫時物理遠離煩躁來源，效果立竿見影',
-      '緊急處方：一份甜食，不計卡路里',
-      '建議對著枕頭大喊一聲，有效釋放壓力',
-      '今日所有不合理要求一律允許用「好喔」敷衍',
-    ],
-    anxious: [
-      '先深呼吸三次，其他的事情待會再說',
-      '把所有擔心的事寫下來，然後摺起來不要看',
-      '建議啟動「先不管它」模式，有效期二十四小時',
-      '今日只需完成一件最重要的事，其餘延後',
-      '焦慮時立即找 Harry 報到，療效顯著',
-    ],
-    excited: [
-      '繼續期待，不要想壞的情況',
-      '允許告訴一個人你在期待什麼',
-      '今日心跳加速屬正常現象，無需就醫',
-      '建議把期待的事情寫下來，完成後回頭看',
-      'Harry 醫師官方背書：好事正在路上',
-    ],
-    bored: [
-      '允許今日什麼都不做，這是官方許可的',
-      '建議補充一杯好喝的飲料，提升幸福體感',
-      '允許偶爾發呆，每次上限十五分鐘',
-      '今日可以找 Harry 聊天，無需預約',
-      '建議翻出喜歡的歌單，讓耳朵快樂一下',
-    ],
-  },
-
-  // 特殊關鍵字處方加成
-  bonusRx: {
-    coffee: '今日咖啡配額追加一杯，Harry 醫師親自批准',
-    food:   '今日飲食不設限，幸福感優先於卡路里',
-    cute:   '建議繼續補充可愛動物影片，療效持久',
-    work:   '下班後請立刻切換成「不想工作模式」，效果即時',
-  },
-};
-
-// ── 主判斷邏輯 ────────────────────────────────────────────────────
-function diagnose(text) {
-  const e = detectEmotions(text);
-
-  // 決定主情緒（優先順序）
-  let mainMood = 'bored';
-  if (e.sad)     mainMood = 'sad';
-  if (e.tired)   mainMood = 'tired';
-  if (e.anxious) mainMood = 'anxious';
-  if (e.angry)   mainMood = 'angry';
-  if (e.excited) mainMood = 'excited';
-  if (e.happy)   mainMood = 'happy';
-  // 如果同時有 happy + tired，根據哪個更多
-  if (e.happy && e.tired) {
-    const happyCount = KEYWORDS.happy.filter(w => text.includes(w)).length;
-    const tiredCount = KEYWORDS.tired.filter(w => text.includes(w)).length;
-    mainMood = happyCount >= tiredCount ? 'happy' : 'tired';
-  }
-
-  const m = DB.moods[mainMood];
-  const [idxNames, idxBaseVals] = DB.indexNames[mainMood];
-  const rxList = [...DB.rxPool[mainMood]];
-
-  // 加入特殊處方
-  const bonusRxList = [];
-  for (const [key, rx] of Object.entries(DB.bonusRx)) {
-    if (e[key]) bonusRxList.push(rx);
-  }
-
-  // 組合指數（加上隨機浮動 ±8）
-  const indices = idxNames.map((name, i) => ({
-    name,
-    value: Math.min(100, Math.max(5, idxBaseVals[i] + rand(-8, 8))),
-  }));
-
-  // 處方：取3條 + 最多1條特殊
-  const finalRx = pickN(rxList, 3);
-  if (bonusRxList.length) finalRx.push(pick(bonusRxList));
-
-  return {
-    mood_emoji: pick(m.emojis),
-    mood_short: pick(m.shorts),
-    code:       pick(m.codes),
-    stamp:      pick(m.stamps),
-    diagnosis:  pick(m.diagnoses),
-    indices,
-    rx: finalRx,
-  };
-}
-
-// ══════════════════════════════════════════════════════════════════
-
-const LOADING_MSGS = [
-  '認真翻閱若若病歷中',
-  '調閱幸福指數資料庫',
-  'Harry 醫師眉頭緊皺思考中',
-  '填寫診斷碼（非常嚴肅）',
-  '蓋上醫師大印中',
-];
-let loadingTimer = null;
-
-function startLoadingAnim() {
-  let i = 0;
-  loadingTimer = setInterval(() => {
-    i = (i + 1) % LOADING_MSGS.length;
-    document.getElementById('loading-sub').textContent = LOADING_MSGS[i];
-  }, 900);
-}
-
-// ★ 換成你的 Cloudflare Worker 網址
+// ── Worker URL ────────────────────────────────────────────────────
 const WORKER_URL = 'https://summer-violet-47f1.harryhsu-cw.workers.dev/';
 
-async function submitMood() {
-  const input = document.getElementById('mood-input').value.trim();
-  if (input.length < 5) return;
-
-  setScreen('loading');
-  startLoadingAnim();
-
-  const systemPrompt = `你是「Harry 醫師」，是若若幸福研究所的首席診斷醫師。
+const SYSTEM_PROMPT = `你是「Harry 醫師」，是若若幸福研究所的首席診斷醫師。
 你要根據若若描述的今日心情，出具一份荒謬又溫柔的「今日心情診斷書」。
 
-請用繁體中文，以 JSON 格式回覆，不要有任何其他文字，格式如下：
+請用繁體中文，以 JSON 格式回覆，不要有任何其他文字，不要有 markdown 符號，直接輸出純 JSON，格式如下：
 {
   "mood_emoji": "一個最能代表心情的 emoji",
   "mood_short": "4字以內的心情摘要",
@@ -571,26 +298,55 @@ async function submitMood() {
     "處方三"
   ]
 }
-指數名稱要跟若若的心情相關，可以很荒謬。
+指數名稱要跟若若的心情相關，可以很荒謬（例如「咖啡依賴度」、「被貓治癒力」）。
 處方要具體可執行，有時可以包含 Harry 本人（例如「立即索取 Harry 抱抱一個」）。`;
+
+// ── Loading ───────────────────────────────────────────────────────
+const LOADING_MSGS = [
+  '認真翻閱若若病歷中',
+  '調閱幸福指數資料庫',
+  'Harry 醫師眉頭緊皺思考中',
+  '填寫診斷碼（非常嚴肅）',
+  '蓋上醫師大印中',
+];
+let loadingTimer = null;
+
+function startLoadingAnim() {
+  let i = 0;
+  loadingTimer = setInterval(() => {
+    i = (i + 1) % LOADING_MSGS.length;
+    document.getElementById('loading-sub').textContent = LOADING_MSGS[i];
+  }, 900);
+}
+
+// ── Submit ────────────────────────────────────────────────────────
+async function submitMood() {
+  const input = document.getElementById('mood-input').value.trim();
+  if (input.length < 5) return;
+
+  setScreen('loading');
+  startLoadingAnim();
 
   try {
     const resp = await fetch(WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'gemini-2.0-flash',
         max_tokens: 1000,
-        system: systemPrompt,
+        system: SYSTEM_PROMPT,
         messages: [{ role: 'user', content: `若若今日心情描述：${input}` }],
       }),
     });
 
-    const data = await resp.json();
-    console.log('[Worker 回傳]', JSON.stringify(data));
+    if (!resp.ok) {
+      throw new Error(`Worker 回傳 ${resp.status}`);
+    }
 
+    const data = await resp.json();
     const raw = data.content?.[0]?.text || '';
-    console.log('[raw text]', raw);
+
+    if (!raw) throw new Error('回傳內容為空');
 
     const cleaned = raw.replace(/```json|```/g, '').trim();
     const result = JSON.parse(cleaned);
@@ -600,37 +356,35 @@ async function submitMood() {
     renderReport(result, `${d.getMonth()+1}/${d.getDate()}`);
 
   } catch (err) {
-    console.error('[錯誤]', err);
     clearInterval(loadingTimer);
-    // API 失敗時 fallback 到本地診斷引擎
-    const result = diagnose(input);
-    const d = new Date();
-    renderReport(result, `${d.getMonth()+1}/${d.getDate()}`);
+    showError(err.message);
   }
 }
 
+// ── Render ────────────────────────────────────────────────────────
 function renderReport(r, dateStr) {
-  document.getElementById('r-date').textContent  = dateStr;
-  document.getElementById('r-mood').textContent  = r.mood_emoji + ' ' + r.mood_short;
-  document.getElementById('r-code').textContent  = r.code;
-  document.getElementById('r-stamp').textContent = r.stamp;
-  document.getElementById('r-diagnosis').textContent = r.diagnosis;
+  document.getElementById('r-date').textContent     = dateStr;
+  document.getElementById('r-mood').textContent     = (r.mood_emoji || '') + ' ' + (r.mood_short || '');
+  document.getElementById('r-code').textContent     = r.code || '---';
+  document.getElementById('r-stamp').textContent    = r.stamp || '✅';
+  document.getElementById('r-diagnosis').textContent = r.diagnosis || '';
 
   const indicesEl = document.getElementById('r-indices');
   indicesEl.innerHTML = '';
-  r.indices.forEach(idx => {
+  (r.indices || []).forEach(idx => {
+    const v = Math.min(100, Math.max(0, Number(idx.value) || 50));
     const row = document.createElement('div');
     row.className = 'index-row';
     row.innerHTML = `
       <div class="index-label">${idx.name}</div>
-      <div class="index-bar"><div class="index-fill" data-val="${idx.value}"></div></div>
-      <div class="index-val">${idx.value}</div>`;
+      <div class="index-bar"><div class="index-fill" data-val="${v}"></div></div>
+      <div class="index-val">${v}</div>`;
     indicesEl.appendChild(row);
   });
 
   const rxEl = document.getElementById('r-rx');
   rxEl.innerHTML = '';
-  r.rx.forEach((item, i) => {
+  (r.rx || []).forEach((item, i) => {
     const el = document.createElement('div');
     el.className = 'rx-item';
     el.innerHTML = `<span class="rx-num">Rx${i+1}</span><span>${item}</span>`;
@@ -638,7 +392,6 @@ function renderReport(r, dateStr) {
   });
 
   setScreen('report');
-
   setTimeout(() => {
     document.querySelectorAll('.index-fill').forEach(bar => {
       bar.style.width = bar.dataset.val + '%';
@@ -646,6 +399,24 @@ function renderReport(r, dateStr) {
   }, 120);
 }
 
+// ── Error ─────────────────────────────────────────────────────────
+function showError(detail) {
+  setScreen('input');
+  const existing = document.getElementById('err-card');
+  if (existing) existing.remove();
+
+  const el = document.createElement('div');
+  el.id = 'err-card';
+  el.className = 'error-card';
+  el.innerHTML = `
+    <div class="error-emoji">😵</div>
+    <div class="error-text">Harry 醫師暫時離開診間了<br>請稍後再試一次 🙏</div>
+    <div class="error-detail">${detail || ''}</div>`;
+  document.getElementById('scroll-wrap').appendChild(el);
+  setTimeout(() => el?.remove(), 6000);
+}
+
+// ── Screens ───────────────────────────────────────────────────────
 function setScreen(name) {
   document.getElementById('screen-input').style.display   = name === 'input'   ? 'contents' : 'none';
   document.getElementById('screen-loading').style.display = name === 'loading' ? 'flex'     : 'none';
@@ -658,6 +429,8 @@ function goBack() {
   document.getElementById('mood-input').value = '';
   document.getElementById('char-now').textContent = '0';
   document.getElementById('btn-submit').classList.remove('ready');
+  const err = document.getElementById('err-card');
+  if (err) err.remove();
   setScreen('input');
 }
 </script>
