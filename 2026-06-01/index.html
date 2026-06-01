@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>若若接泡泡</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap');
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Zen Maru Gothic', "PingFang TC", sans-serif;
+            background: #d6eaf5;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+
+        /* 背景裝飾泡泡（靜態） */
+        .bg-circle {
+            position: fixed;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.12);
+            pointer-events: none;
+        }
+
+        /* ── 遊戲畫布 ── */
+        #game-canvas {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ── UI 疊加層 ── */
+        .ui-layer {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* 頂部資訊列 */
+        .top-bar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            padding: 18px 24px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 20;
+        }
+        .title-text {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #1a3a5c;
+        }
+        .score-wrap {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255,255,255,0.75);
+            border-radius: 20px;
+            padding: 5px 14px;
+            backdrop-filter: blur(4px);
+        }
+        .score-num {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #1a3a5c;
+        }
+        .score-total {
+            font-size: 0.8rem;
+            color: #6a9ab8;
+            font-weight: 500;
+        }
+
+        /* 進度條 */
+        .progress-bar-wrap {
+            position: fixed;
+            top: 70px; left: 20px; right: 20px;
+            height: 10px;
+            background: rgba(255,255,255,0.4);
+            border-radius: 10px;
+            z-index: 20;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #74c0e8, #a8d8f5);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        /* 底部提示 */
+        .bottom-hint {
+            position: fixed;
+            bottom: 24px; left: 0; right: 0;
+            text-align: center;
+            font-size: 0.82rem;
+            color: #6a9ab8;
+            z-index: 20;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0%,100%{opacity:.5} 50%{opacity:1} }
+
+        /* 爆炸粒子 */
+        .pop-particle {
+            position: fixed;
+            pointer-events: none;
+            z-index: 30;
+            font-size: 0.9rem;
+            animation: popFly var(--dur) ease-out forwards;
+        }
+        @keyframes popFly {
+            0%   { transform: translate(0,0) scale(1.2); opacity: 1; }
+            100% { transform: translate(var(--px),var(--py)) scale(0); opacity: 0; }
+        }
+
+        /* ── 獎品 overlay ── */
+        .prize-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(20,50,80,0.45);
+            backdrop-filter: blur(5px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+        }
+        .prize-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .prize-card {
+            width: 290px;
+            background: #fffdf5;
+            border-radius: 24px;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.2);
+            text-align: center;
+            transform: scale(0.7) translateY(40px);
+            opacity: 0;
+            transition: transform 0.5s cubic-bezier(0.175,0.885,0.32,1.275) 0.05s,
+                        opacity 0.35s ease 0.05s;
+            overflow: hidden;
+        }
+        .prize-overlay.show .prize-card {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+        }
+
+        .prize-card-top {
+            background: linear-gradient(135deg, #b8dff0 0%, #d6eefa 100%);
+            padding: 28px 20px 22px;
+        }
+        .prize-card-emoji { font-size: 3rem; display: block; margin-bottom: 8px; }
+        .prize-card-tag {
+            font-size: 0.65rem;
+            color: #4a8ab0;
+            letter-spacing: 4px;
+            font-weight: 700;
+        }
+
+        .prize-card-body { padding: 22px 28px 8px; }
+        .prize-card-name {
+            font-size: 1.08rem;
+            font-weight: 700;
+            color: #1a3a5c;
+            line-height: 1.8;
+            white-space: pre-line;
+        }
+
+        .prize-card-btn {
+            display: block;
+            margin: 18px auto 24px;
+            width: calc(100% - 56px);
+            background: #4a9cc7;
+            color: #fff;
+            border: none;
+            padding: 13px;
+            font-family: 'Zen Maru Gothic', "PingFang TC", sans-serif;
+            font-size: 0.9rem;
+            font-weight: 700;
+            border-radius: 50px;
+            cursor: pointer;
+            letter-spacing: 1px;
+            transition: filter 0.2s;
+        }
+        .prize-card-btn:hover { filter: brightness(1.08); }
+
+        /* 開始畫面 */
+        .start-overlay {
+            position: fixed;
+            inset: 0;
+            background: #d6eaf5;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            z-index: 50;
+            transition: opacity 0.5s ease;
+        }
+        .start-overlay.hide {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .start-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1a3a5c;
+            text-align: center;
+        }
+        .start-sub {
+            font-size: 0.9rem;
+            color: #6a9ab8;
+            text-align: center;
+            line-height: 1.8;
+        }
+        .start-roro {
+            font-size: 5rem;
+            animation: float 2s infinite ease-in-out;
+        }
+        @keyframes float {
+            0%,100% { transform: translateY(0); }
+            50%      { transform: translateY(-12px); }
+        }
+        .start-btn {
+            background: #4a9cc7;
+            color: #fff;
+            border: none;
+            padding: 15px 44px;
+            font-family: 'Zen Maru Gothic', "PingFang TC", sans-serif;
+            font-size: 1.05rem;
+            font-weight: 700;
+            border-radius: 50px;
+            cursor: pointer;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 16px rgba(74,156,199,0.35);
+            transition: all 0.2s;
+        }
+        .start-btn:hover { filter: brightness(1.08); transform: translateY(-2px); }
+    </style>
+</head>
+<body>
+
+<!-- 開始畫面 -->
+<div class="start-overlay" id="start-overlay">
+    <div class="start-roro">🛁</div>
+    <div class="start-title">若若接泡泡！</div>
+    <div class="start-sub">若若剛洗完澡，泡泡四散飛！<br>用手指左右滑動接住 5 顆泡泡<br>就能解鎖今日獎勵 🎁</div>
+    <button class="start-btn" onclick="startGame()">開始接泡泡</button>
+</div>
+
+<!-- 遊戲畫布 -->
+<canvas id="game-canvas"></canvas>
+
+<!-- 頂部 UI -->
+<div class="top-bar">
+    <div class="title-text">🫧 接泡泡</div>
+    <div class="score-wrap">
+        <span class="score-num" id="score-num">0</span>
+        <span class="score-total">/ 10</span>
+    </div>
+</div>
+
+<div class="progress-bar-wrap">
+    <div class="progress-bar-fill" id="progress-fill"></div>
+</div>
+
+<div class="bottom-hint" id="bottom-hint">← 滑動控制若若 →</div>
+
+<!-- 獎品 overlay -->
+<div class="prize-overlay" id="prize-overlay">
+    <div class="prize-card">
+        <div class="prize-card-top">
+            <span class="prize-card-emoji" id="prize-emoji">🎁</span>
+            <div class="prize-card-tag">✦ 今日獎勵 ✦</div>
+        </div>
+        <div class="prize-card-body">
+            <div class="prize-card-name" id="prize-name">...</div>
+        </div>
+        <button class="prize-card-btn" onclick="restartGame()">再玩一次 🫧</button>
+    </div>
+</div>
+
+<script>
+const prizes = [
+    { emoji:"☕️", name:"工具人外送上班下午茶" },
+    { emoji:"🚗", name:"工具人上下班接受" },
+    { emoji:"🍫", name:"工具人成為你的小點心" },
+    { emoji:"🤗", name:"工具人ㄉ抱抱" },
+];
+
+const GOAL = 10;
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+const scoreNum = document.getElementById('score-num');
+const progressFill = document.getElementById('progress-fill');
+const prizeOverlay = document.getElementById('prize-overlay');
+const prizeEmoji = document.getElementById('prize-emoji');
+const prizeName = document.getElementById('prize-name');
+
+let W, H, animId;
+let score = 0;
+let gameRunning = false;
+
+// 若若（接球板）
+const roro = { x: 0, y: 0, w: 140, h: 180, targetX: 0 };
+
+// 預載若若圖片
+const roroImg = new Image();
+roroImg.src = 'Gemini_Generated_Image_30clki30clki30cl.png';
+
+// 泡泡陣列
+let bubbles = [];
+let spawnTimer = 0;
+let spawnInterval = 90; // frames
+
+// 失誤特效
+let misses = [];
+
+// 觸控/滑鼠追蹤
+let pointerX = null;
+let isDragging = false;
+
+function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    roro.y = H - roro.h * 0.6;
+    if (pointerX === null) { roro.x = W / 2; roro.targetX = W / 2; }
+}
+window.addEventListener('resize', resize);
+
+// ── 輸入控制 ──
+canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    isDragging = true;
+    pointerX = e.touches[0].clientX;
+    roro.targetX = pointerX;
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (!isDragging) return;
+    pointerX = e.touches[0].clientX;
+    roro.targetX = pointerX;
+}, { passive: false });
+
+canvas.addEventListener('touchend', () => isDragging = false);
+
+canvas.addEventListener('mousemove', e => {
+    pointerX = e.clientX;
+    roro.targetX = e.clientX;
+});
+
+// ── 泡泡生成 ──
+function spawnBubble() {
+    const r = 18 + Math.random() * 16;
+    // 各種可愛泡泡顏色
+    const colors = [
+        { fill: 'rgba(180,225,250,0.7)', stroke: 'rgba(120,190,230,0.9)' },
+        { fill: 'rgba(210,180,250,0.65)', stroke: 'rgba(170,130,230,0.85)' },
+        { fill: 'rgba(180,240,210,0.65)', stroke: 'rgba(120,200,160,0.85)' },
+        { fill: 'rgba(250,210,180,0.65)', stroke: 'rgba(220,160,120,0.8)' },
+        { fill: 'rgba(250,200,220,0.65)', stroke: 'rgba(220,150,180,0.85)' },
+    ];
+    const c = colors[Math.floor(Math.random() * colors.length)];
+    bubbles.push({
+        x: r + Math.random() * (W - r * 2),
+        y: -r,
+        r,
+        vy: 1.8 + Math.random() * 1.6,
+        vx: (Math.random() - 0.5) * 1.2,
+        fill: c.fill,
+        stroke: c.stroke,
+        wobble: Math.random() * Math.PI * 2,
+        wobbleSpeed: 0.05 + Math.random() * 0.03,
+    });
+}
+
+// ── 繪製泡泡 ──
+function drawBubble(b) {
+    b.wobble += b.wobbleSpeed;
+    const rx = b.r + Math.sin(b.wobble) * 1.5;
+    const ry = b.r + Math.cos(b.wobble * 0.8) * 1.5;
+
+    ctx.save();
+    ctx.translate(b.x, b.y);
+
+    // 泡泡本體
+    ctx.beginPath();
+    ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fillStyle = b.fill;
+    ctx.fill();
+    ctx.strokeStyle = b.stroke;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // 高光
+    ctx.beginPath();
+    ctx.ellipse(-rx * 0.25, -ry * 0.28, rx * 0.22, ry * 0.14, -0.5, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.65)';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.ellipse(-rx * 0.1, -ry * 0.15, rx * 0.08, ry * 0.06, -0.3, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.fill();
+
+    ctx.restore();
+}
+
+// ── 繪製若若（圖片，黑色背景用 multiply 混合去除） ──
+function drawRoro() {
+    if (!roroImg.complete || roroImg.naturalWidth === 0) {
+        // fallback emoji
+        ctx.font = '64px serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🧖‍♀️', roro.x, roro.y);
+        return;
+    }
+
+    ctx.save();
+    // multiply 讓黑色背景消失
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.drawImage(
+        roroImg,
+        roro.x - roro.w / 2,
+        roro.y - roro.h * 0.85,
+        roro.w,
+        roro.h
+    );
+    ctx.restore();
+}
+
+// ── 泡泡接住特效 ──
+function catchEffect(x, y) {
+    const symbols = ['✨','🫧','💧','⭐'];
+    for (let i = 0; i < 6; i++) {
+        const el = document.createElement('div');
+        el.className = 'pop-particle';
+        el.innerText = symbols[Math.floor(Math.random() * symbols.length)];
+        const angle = (Math.PI * 2 / 6) * i;
+        const dist = 35 + Math.random() * 25;
+        el.style.cssText = `
+            left:${x}px; top:${y}px;
+            --px:${Math.cos(angle)*dist}px;
+            --py:${Math.sin(angle)*dist}px;
+            --dur:${0.5+Math.random()*0.3}s;
+        `;
+        document.body.appendChild(el);
+        el.addEventListener('animationend', ()=>el.remove());
+    }
+}
+
+// ── 主遊戲迴圈 ──
+function gameLoop() {
+    if (!gameRunning) return;
+    ctx.clearRect(0, 0, W, H);
+
+    // 若若平滑移動
+    roro.x += (roro.targetX - roro.x) * 0.18;
+
+    // 生成泡泡
+    spawnTimer++;
+    if (spawnTimer >= spawnInterval) {
+        spawnBubble();
+        spawnTimer = 0;
+        // 隨著進度加快
+        spawnInterval = Math.max(45, 90 - score * 6);
+    }
+
+    // 更新 & 繪製泡泡
+    bubbles = bubbles.filter(b => {
+        b.x += b.vx;
+        b.y += b.vy;
+        b.vy += 0.025; // 輕微加速
+
+        // 左右反彈
+        if (b.x - b.r < 0)  { b.x = b.r; b.vx *= -1; }
+        if (b.x + b.r > W)  { b.x = W - b.r; b.vx *= -1; }
+
+        // 碰到水桶（圖片頂部約 20% 高度處）
+        const bucketTop  = roro.y - roro.h * 0.85;
+        const bucketMidY = bucketTop + roro.h * 0.18;
+        const catchW     = roro.w * 0.42;
+        if (b.y + b.r >= bucketMidY - 10 && b.y + b.r <= bucketMidY + 28
+            && Math.abs(b.x - roro.x) < catchW + b.r * 0.5) {
+            score++;
+            scoreNum.innerText = score;
+            progressFill.style.width = (score / GOAL * 100) + '%';
+            catchEffect(b.x, b.y);
+            if (score >= GOAL) {
+                setTimeout(showPrize, 400);
+                gameRunning = false;
+            }
+            return false; // 移除泡泡
+        }
+
+        // 掉出畫面底部
+        if (b.y - b.r > H) return false;
+
+        drawBubble(b);
+        return true;
+    });
+
+    // 繪製若若
+    drawRoro();
+
+    animId = requestAnimationFrame(gameLoop);
+}
+
+function startGame() {
+    document.getElementById('start-overlay').classList.add('hide');
+    resize();
+    roro.x = W / 2;
+    roro.targetX = W / 2;
+    score = 0;
+    bubbles = [];
+    spawnTimer = 0;
+    spawnInterval = 90;
+    scoreNum.innerText = '0';
+    progressFill.style.width = '0%';
+    gameRunning = true;
+    gameLoop();
+}
+
+function showPrize() {
+    cancelAnimationFrame(animId);
+    const p = prizes[Math.floor(Math.random() * prizes.length)];
+    prizeEmoji.innerText = p.emoji;
+    prizeName.innerText = p.name;
+    prizeOverlay.classList.add('show');
+
+    // 慶祝粒子
+    ['✨','🫧','⭐','💙','🌸'].forEach((s,i) => {
+        for (let j=0; j<3; j++) setTimeout(()=>{
+            const el = document.createElement('div');
+            el.className = 'pop-particle';
+            el.innerText = s;
+            el.style.fontSize = '1.2rem';
+            el.style.left = (10+Math.random()*80)+'vw';
+            el.style.top  = (10+Math.random()*70)+'vh';
+            el.style.setProperty('--px',(Math.random()-.5)*80+'px');
+            el.style.setProperty('--py',-(40+Math.random()*80)+'px');
+            el.style.setProperty('--dur','1s');
+            document.body.appendChild(el);
+            el.addEventListener('animationend',()=>el.remove());
+        },(i*3+j)*60);
+    });
+}
+
+function restartGame() {
+    prizeOverlay.classList.remove('show');
+    ctx.clearRect(0,0,W,H);
+    startGame();
+}
+</script>
+</body>
+</html>
