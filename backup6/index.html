@@ -345,20 +345,11 @@ async function submitMood() {
 
     const data = await resp.json();
 
-    // Gemini 格式：candidates[0].content.parts[0].text
-    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-    if (!raw) throw new Error('回傳內容為空：' + JSON.stringify(data).slice(0, 100));
-
-    let cleaned = raw.replace(/```json|```/g, '').trim();
-    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('找不到JSON，raw=' + raw.slice(0, 80));
-    let result;
-    try {
-      result = JSON.parse(jsonMatch[0]);
-    } catch(parseErr) {
-      throw new Error('JSON解析失敗：' + parseErr.message + '，內容=' + jsonMatch[0].slice(0, 80));
+    if (!data.ok) {
+      throw new Error(data.error || '未知錯誤');
     }
+
+    const result = data.result;
 
     clearInterval(loadingTimer);
     const d = new Date();
