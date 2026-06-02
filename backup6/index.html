@@ -350,8 +350,12 @@ async function submitMood() {
 
     if (!raw) throw new Error('回傳內容為空：' + JSON.stringify(data).slice(0, 100));
 
-    const cleaned = raw.replace(/```json|```/g, '').trim();
-    const result = JSON.parse(cleaned);
+    // 清除 markdown 符號，並擷取第一個完整 JSON 物件
+    let cleaned = raw.replace(/```json|```/g, '').trim();
+    // 有時 AI 會在 JSON 前後加說明文字，用正則擷取 { } 之間的內容
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('找不到 JSON 內容');
+    const result = JSON.parse(jsonMatch[0]);
 
     clearInterval(loadingTimer);
     const d = new Date();
