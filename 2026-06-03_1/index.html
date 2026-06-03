@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
+    <title>若若專屬刮刮樂</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap');
+
+        *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+        html { height: 100%; }
+        body {
+            font-family: 'Zen Maru Gothic', "PingFang TC", "Microsoft JhengHei", sans-serif;
+            background: #d6eaf5;
+            min-height: 100%;
+            min-height: -webkit-fill-available;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        }
+
+        .page {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: clamp(24px, 6vw, 48px) 16px clamp(24px, 6vw, 40px);
+            gap: clamp(14px, 4vw, 24px);
+            width: 100%;
+            max-width: 480px;
+        }
+
+        .title-block { text-align: center; }
+        .title-main {
+            font-size: clamp(1rem, 4.5vw, 1.3rem);
+            font-weight: 700;
+            color: #1a3a5c;
+            letter-spacing: 1px;
+        }
+        .title-sub {
+            font-size: clamp(0.75rem, 3vw, 0.85rem);
+            color: #6a9ab8;
+            margin-top: 5px;
+        }
+
+        /* 卡片外層 */
+        .card-outer {
+            position: relative;
+            width: 100%;
+            max-width: 380px;
+            padding: 0 8px; /* 給角落裝飾留空間 */
+        }
+
+        .deco-img {
+            position: absolute;
+            z-index: 20;
+            pointer-events: none;
+            mix-blend-mode: multiply;
+            object-fit: contain;
+        }
+        .deco-tl {
+            width: clamp(60px, 18vw, 90px);
+            top: -16px;
+            left: -8px;
+        }
+        .deco-tr {
+            width: clamp(54px, 16vw, 80px);
+            top: -16px;
+            right: -8px;
+            transform: scaleX(-1);
+        }
+
+        /* 卡片本體 */
+        .card {
+            width: 100%;
+            background: #fff;
+            border-radius: clamp(16px, 5vw, 24px);
+            overflow: hidden;
+            box-shadow: 0 4px 28px rgba(30,80,130,0.13);
+            position: relative;
+        }
+
+        /* 圖片區：寬度撐滿，高度跟著圖片走 */
+        .card-img-zone {
+            background: #e8f4fc;
+            width: 100%;
+            display: block;
+            line-height: 0;
+        }
+        .roro-img {
+            width: 100%;
+            height: auto;
+            display: block;
+            object-fit: contain;
+        }
+
+        /* 獎品區 */
+        .prize-zone {
+            padding: clamp(20px, 5vw, 26px) clamp(16px, 5vw, 24px) clamp(16px, 4vw, 22px);
+            min-height: clamp(130px, 35vw, 160px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-align: center;
+            background: #fff;
+            position: relative;
+        }
+        .prize-emoji { font-size: clamp(2rem, 8vw, 2.6rem); line-height: 1; }
+        .prize-tag {
+            font-size: clamp(0.6rem, 2vw, 0.68rem);
+            color: #5b9ec9;
+            letter-spacing: 3px;
+            font-weight: 600;
+        }
+        .prize-name {
+            font-size: clamp(0.88rem, 3.5vw, 1rem);
+            font-weight: 600;
+            color: #1a3a5c;
+            line-height: 1.75;
+            white-space: pre-line;
+        }
+
+        #scratch-canvas {
+            position: absolute;
+            left: 0;
+            cursor: crosshair;
+            touch-action: none;
+        }
+
+        .card-foot {
+            padding: 8px clamp(12px, 4vw, 20px);
+            display: flex;
+            justify-content: space-between;
+            border-top: 1px solid #eaf4fb;
+            background: #fff;
+        }
+        .card-foot span {
+            font-size: clamp(0.45rem, 1.5vw, 0.5rem);
+            color: #aacde0;
+            letter-spacing: 1px;
+        }
+
+        .hint {
+            font-size: clamp(0.8rem, 3.2vw, 0.88rem);
+            color: #6a9ab8;
+            text-align: center;
+            animation: blink 2s infinite;
+            transition: opacity 0.5s;
+        }
+        .hint.hide { opacity: 0; pointer-events: none; }
+        @keyframes blink {
+            0%,100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        .after-block {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
+            opacity: 0;
+            transform: translateY(8px);
+            transition: all 0.5s ease 0.2s;
+            pointer-events: none;
+        }
+        .after-block.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+        .after-msg {
+            font-size: clamp(0.82rem, 3.2vw, 0.9rem);
+            color: #6a9ab8;
+            text-align: center;
+        }
+
+        .btn-again {
+            background: #4a9cc7;
+            color: #fff;
+            border: none;
+            padding: clamp(11px, 3.5vw, 14px) clamp(28px, 9vw, 40px);
+            font-family: 'Zen Maru Gothic', "PingFang TC", sans-serif;
+            font-size: clamp(0.85rem, 3.5vw, 0.95rem);
+            font-weight: 600;
+            border-radius: 50px;
+            cursor: pointer;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 14px rgba(74,156,199,0.35);
+            transition: all 0.2s;
+        }
+        .btn-again:active { filter: brightness(1.08); transform: scale(0.97); }
+
+        @keyframes pop {
+            0% { transform: scale(0.5); opacity: 0; }
+            65% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .prize-zone.shown .prize-emoji {
+            animation: pop 0.5s cubic-bezier(0.175,0.885,0.32,1.275) forwards;
+        }
+
+        .ptcl {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            font-size: 1rem;
+            animation: fly 1s ease-out forwards;
+        }
+        @keyframes fly {
+            0% { transform: translate(0,0) scale(1); opacity: 1; }
+            100% { transform: translate(var(--sx),var(--sy)) scale(0); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="page">
+
+    <div class="title-block">
+        <div class="title-main">若若專屬刮刮樂 🎴</div>
+        <div class="title-sub">刮開看看今天的驚喜吧！</div>
+    </div>
+
+    <div class="card-outer">
+        <img class="deco-img deco-tl" src="82024d77b8c5e72390ff80690e4f4207.jpg" alt="">
+        <img class="deco-img deco-tr" src="images.jpeg" alt="">
+
+        <div class="card">
+            <div class="card-img-zone" id="img-zone">
+                <img class="roro-img" src="wakeup.png" alt="若若"
+                     onerror="this.parentElement.style.display='none'">
+            </div>
+
+            <div class="prize-zone" id="prize-zone">
+                <div class="prize-emoji" id="p-emoji">🎁</div>
+                <div class="prize-tag">✦ 今日獎勵 ✦</div>
+                <div class="prize-name" id="p-name">...</div>
+            </div>
+
+            <canvas id="scratch-canvas"></canvas>
+
+            <div class="card-foot">
+                <span>NO. RORO-2025</span>
+                <span>每日限刮一次</span>
+                <span>不得轉讓</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="hint" id="hint">👆 用手指刮開塗層</div>
+
+    <div class="after-block" id="after">
+        <div class="after-msg">🎉 若若今天也超棒的！</div>
+        <button class="btn-again" onclick="resetCard()">換一張試試</button>
+    </div>
+
+</div>
+
+<script>
+const prizes = [
+    { emoji:"☕️", name:"星巴克西西里咖啡\n＋蛋糕一份" },
+    { emoji:"🚗", name:"下班 Uber\n免費搭乘一趟" },
+    { emoji:"🎫", name:"週五咖啡廳\n入場券乙張" },
+    { emoji:"🛡️", name:"適應期辛苦了！\n你已經表現得很棒囉！" },
+    { emoji:"🍫", name:"吃 Kit Kat 不變胖\n豁免權一次" },
+    { emoji:"🤗", name:"Harry 抱抱一個\n（超級大獎！）" },
+];
+
+const canvas   = document.getElementById('scratch-canvas');
+const ctx      = canvas.getContext('2d');
+const card     = document.querySelector('.card');
+const prizeZone = document.getElementById('prize-zone');
+const pEmoji   = document.getElementById('p-emoji');
+const pName    = document.getElementById('p-name');
+const hint     = document.getElementById('hint');
+const after    = document.getElementById('after');
+
+let drawing = false, revealed = false, checks = 0;
+
+function pickPrize() {
+    const p = prizes[Math.floor(Math.random() * prizes.length)];
+    pEmoji.innerText = p.emoji;
+    pName.innerText  = p.name;
+}
+
+function initCanvas() {
+    const imgZone = document.getElementById('img-zone');
+    const imgZoneH = imgZone.style.display === 'none' ? 0 : imgZone.offsetHeight;
+    const prizeH   = prizeZone.offsetHeight;
+    const W        = card.offsetWidth;
+
+    canvas.width  = W;
+    canvas.height = prizeH;
+    canvas.style.top = imgZoneH + 'px';
+
+    // 銀白刮塗層
+    const g = ctx.createLinearGradient(0, 0, W, prizeH);
+    g.addColorStop(0,    '#dce8f0');
+    g.addColorStop(0.25, '#eaf4fa');
+    g.addColorStop(0.5,  '#d8e8f2');
+    g.addColorStop(0.75, '#e8f2f8');
+    g.addColorStop(1,    '#ccdde8');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, prizeH);
+
+    // 金屬光澤
+    const shine = ctx.createLinearGradient(0, 0, W, 0);
+    shine.addColorStop(0,    'rgba(255,255,255,0)');
+    shine.addColorStop(0.35, 'rgba(255,255,255,0.35)');
+    shine.addColorStop(0.5,  'rgba(255,255,255,0.55)');
+    shine.addColorStop(0.65, 'rgba(255,255,255,0.35)');
+    shine.addColorStop(1,    'rgba(255,255,255,0)');
+    ctx.fillStyle = shine;
+    ctx.fillRect(0, 0, W, prizeH);
+
+    // 橫向細紋
+    for (let y = 0; y < prizeH; y += 4) {
+        ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.06})`;
+        ctx.fillRect(0, y, W, 2);
+    }
+
+    // 提示文字
+    ctx.fillStyle  = 'rgba(30,80,130,0.3)';
+    ctx.font       = 'bold 13px -apple-system, PingFang TC, sans-serif';
+    ctx.textAlign  = 'center';
+    ctx.fillText('刮開看看驚喜 🎴', W/2, prizeH/2 - 7);
+    ctx.font       = '11px -apple-system, sans-serif';
+    ctx.fillStyle  = 'rgba(30,80,130,0.2)';
+    ctx.fillText('用手指或滑鼠刮塗', W/2, prizeH/2 + 13);
+
+    revealed = false; checks = 0;
+}
+
+function scratch(x, y) {
+    ctx.globalCompositeOperation = 'destination-out';
+    const g = ctx.createRadialGradient(x,y,0, x,y,28);
+    g.addColorStop(0,   'rgba(0,0,0,1)');
+    g.addColorStop(0.6, 'rgba(0,0,0,0.85)');
+    g.addColorStop(1,   'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x,y,28,0,Math.PI*2); ctx.fill();
+    if (++checks % 6 === 0) checkReveal();
+}
+
+function checkReveal() {
+    if (revealed) return;
+    const d = ctx.getImageData(0,0,canvas.width,canvas.height).data;
+    let t = 0;
+    for (let i=3; i<d.length; i+=32) if (d[i]<128) t++;
+    if (t/(d.length/32) > 0.52) revealAll();
+}
+
+function revealAll() {
+    if (revealed) return;
+    revealed = true;
+    canvas.style.transition = 'opacity .7s ease';
+    canvas.style.opacity = '0';
+    setTimeout(()=>{
+        canvas.style.display = 'none';
+        prizeZone.classList.add('shown');
+        hint.classList.add('hide');
+        after.classList.add('show');
+        sparkle();
+    }, 700);
+}
+
+canvas.addEventListener('mousedown', ()=>drawing=true);
+window.addEventListener('mouseup',   ()=>drawing=false);
+canvas.addEventListener('mousemove', e=>{
+    if (!drawing||revealed) return;
+    const r = canvas.getBoundingClientRect();
+    scratch(e.clientX-r.left, e.clientY-r.top);
+});
+canvas.addEventListener('touchstart', e=>{ e.preventDefault(); drawing=true; }, {passive:false});
+window.addEventListener('touchend',   ()=>drawing=false);
+canvas.addEventListener('touchmove', e=>{
+    e.preventDefault();
+    if (!drawing||revealed) return;
+    const r = canvas.getBoundingClientRect(), t = e.touches[0];
+    scratch(t.clientX-r.left, t.clientY-r.top);
+}, {passive:false});
+
+function sparkle() {
+    ['✨','⭐','💙','🌀','🫧','💫'].forEach((s,i)=>{
+        for(let j=0;j<3;j++) setTimeout(()=>{
+            const el = document.createElement('div');
+            el.className='ptcl'; el.innerText=s;
+            el.style.left=(10+Math.random()*80)+'vw';
+            el.style.top =(10+Math.random()*70)+'vh';
+            el.style.setProperty('--sx',(Math.random()-.5)*90+'px');
+            el.style.setProperty('--sy',-(40+Math.random()*80)+'px');
+            document.body.appendChild(el);
+            el.addEventListener('animationend',()=>el.remove());
+        }, (i*3+j)*55);
+    });
+}
+
+function resetCard() {
+    canvas.style.display    = 'block';
+    canvas.style.opacity    = '1';
+    canvas.style.transition = '';
+    prizeZone.classList.remove('shown');
+    hint.classList.remove('hide');
+    after.classList.remove('show');
+    pickPrize();
+    initCanvas();
+}
+
+// ── Init ──────────────────────────────────────────────────────────
+pickPrize();
+
+// 等圖片載入後初始化 canvas
+const roroImg = document.querySelector('.roro-img');
+if (roroImg) {
+    if (roroImg.complete && roroImg.naturalHeight !== 0) {
+        initCanvas();
+    } else {
+        roroImg.addEventListener('load',  initCanvas);
+        roroImg.addEventListener('error', initCanvas);
+    }
+} else {
+    initCanvas();
+}
+
+// resize 時重設（未刮開才重畫）
+window.addEventListener('resize', ()=>{ if (!revealed) setTimeout(initCanvas, 100); });
+
+// ── Line browser height fix ───────────────────────────────────────
+function fixHeight() {
+  const h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  document.body.style.minHeight = h + 'px';
+}
+fixHeight();
+window.addEventListener('resize', fixHeight);
+window.addEventListener('load', () => setTimeout(fixHeight, 200));
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', fixHeight);
+  window.visualViewport.addEventListener('scroll', fixHeight);
+}
+</script>
+</body>
+</html>
