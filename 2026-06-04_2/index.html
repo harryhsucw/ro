@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
+<title>借我兩分鐘</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;}
+
+:root{
+  --bg-start: #8fa8c4;      /* 開始：灰藍 */
+  --bg-mid:   #e8d5b0;      /* 中間：暖米 */
+  --bg-end:   #f0a855;      /* 結束：暖橙 */
+  --text:     #5a4a3a;
+  --text-light: #a09080;
+  --gold:     #d4a882;
+
+  /* ★ 可以改這裡 */
+  --TOTAL_CYCLES: 5;
+}
+
+html{height:100%;overflow:hidden;position:fixed;width:100%;}
+body{
+  height:100%;width:100%;overflow:hidden;
+  font-family:'Zen Maru Gothic','PingFang TC','Apple Color Emoji',sans-serif;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  background: #ffffff;
+}
+
+/* ── Glow background ── */
+#bg-glow{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  transition: background 3s ease;
+  background: radial-gradient(ellipse 80% 65% at 50% 52%,
+    rgba(143,168,196,0.45) 0%,
+    rgba(255,255,255,0) 75%
+  );
+}
+
+/* ── Canvas for particles ── */
+#particle-canvas{
+  position:fixed;inset:0;
+  pointer-events:none;
+  z-index:0;
+}
+
+/* ── Main layout ── */
+#app{
+  position:relative;z-index:1;
+  display:flex;flex-direction:column;align-items:center;
+  width:100%;max-width:420px;
+  padding: clamp(20px,5vw,40px) 20px;
+  gap: clamp(16px,4vw,24px);
+}
+
+/* ── Title ── */
+.title-area{text-align:center;}
+.game-title{
+  font-size:clamp(22px,6vw,28px);
+  font-weight:700;
+  color:var(--text);
+  text-shadow:none;
+  letter-spacing:0.08em;
+}
+.game-sub{
+  font-size:clamp(12px,3.3vw,14px);
+  color:var(--text-light);
+  margin-top:4px;
+  letter-spacing:0.05em;
+}
+
+/* ── Character wrap ── */
+#char-wrap{
+  position:relative;
+  width:clamp(200px,58vw,260px);
+  height:clamp(200px,58vw,260px);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+
+/* Glow rings */
+.glow-ring{
+  position:absolute;
+  border-radius:50%;
+  border:2px solid rgba(255,255,255,0.3);
+  transition: transform 0.1s linear, opacity 0.5s;
+  pointer-events:none;
+}
+#ring1{width:100%;height:100%;animation:none;}
+#ring2{width:78%;height:78%;border-color:rgba(255,255,255,0.2);}
+#ring3{width:56%;height:56%;border-color:rgba(255,255,255,0.15);}
+
+/* Aura */
+#aura{
+  position:absolute;
+  width:70%;height:70%;
+  border-radius:50%;
+  background:radial-gradient(circle, rgba(255,255,255,0.35) 0%, transparent 70%);
+  transition: transform 3s ease, opacity 1s;
+  opacity:0.5;
+}
+
+/* Character image */
+#char-img{
+  position:relative;z-index:2;
+  width:clamp(160px,46vw,210px);
+  object-fit:contain;
+  mix-blend-mode:multiply;
+  filter:drop-shadow(0 8px 24px rgba(90,74,58,0.15));
+  transition: transform 0.1s linear;
+}
+
+#char-emoji{
+  font-size:clamp(100px,28vw,130px);
+  display:none;
+  position:relative;z-index:2;
+}
+
+/* ── Breath indicator ── */
+#breath-ring-wrap{
+  position:relative;
+  width:clamp(100px,28vw,120px);
+  height:clamp(100px,28vw,120px);
+  flex-shrink:0;
+}
+
+#breath-svg{
+  width:100%;height:100%;
+  transform:rotate(-90deg);
+}
+
+#breath-track{
+  fill:none;
+  stroke:rgba(90,74,58,0.12);
+  stroke-width:4;
+}
+
+#breath-progress{
+  fill:none;
+  stroke:white;
+  stroke-width:4;
+  stroke-linecap:round;
+  transition: stroke-dashoffset 0.1s linear, stroke 1s;
+}
+
+.breath-label{
+  position:absolute;
+  inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  gap:2px;
+}
+
+#breath-text{
+  font-size:clamp(14px,4vw,16px);
+  font-weight:700;
+  color:var(--text);
+  letter-spacing:0.05em;
+  transition: opacity 0.3s;
+}
+
+#breath-count{
+  font-size:clamp(10px,2.8vw,12px);
+  color:var(--text-light);
+}
+
+/* ── Calm meter ── */
+.calm-wrap{
+  width:100%;
+  display:flex;flex-direction:column;align-items:center;
+  gap:6px;
+}
+
+.calm-label{
+  font-size:clamp(11px,3vw,13px);
+  color:var(--text-light);
+  letter-spacing:0.1em;
+}
+
+.calm-track{
+  width:clamp(200px,60vw,260px);
+  height:8px;
+  background:rgba(90,74,58,0.10);
+  border-radius:99px;
+  overflow:hidden;
+}
+
+#calm-fill{
+  height:100%;
+  border-radius:99px;
+  background:linear-gradient(90deg, rgba(255,255,255,0.5), white);
+  width:0%;
+  transition: width 1s ease;
+}
+
+#calm-status{
+  font-size:clamp(11px,3vw,13px);
+  color:var(--text-light);
+  min-height:1.4em;
+  transition: opacity 0.5s;
+}
+
+/* ── Start / End button ── */
+.btn{
+  border:none;border-radius:99px;
+  padding:clamp(12px,3.5vw,15px) clamp(28px,8vw,40px);
+  font-family:inherit;font-size:clamp(14px,4vw,16px);font-weight:700;
+  cursor:pointer;transition:transform 0.15s, opacity 0.3s;
+  letter-spacing:0.05em;
+}
+.btn:active{transform:scale(0.96);}
+
+#btn-start{
+  background:linear-gradient(135deg,var(--gold),#c9956f);
+  color:white;
+  box-shadow:0 4px 20px rgba(212,168,130,0.35);
+  transition:opacity 0.4s ease, transform 0.4s ease;
+}
+#btn-start.hidden{
+  opacity:0;
+  transform:scale(0.85);
+  pointer-events:none;
+}
+
+#btn-hold{
+  display:none;
+  background:rgba(90,74,58,0.07);
+  color:var(--text-light);
+  border:2px solid rgba(90,74,58,0.12);
+  font-size:clamp(12px,3.3vw,14px);
+}
+
+/* ── Harry popup overlay ── */
+#harry-overlay{
+  display:none;
+  position:fixed;inset:0;z-index:200;
+  background:rgba(26,20,40,0.6);
+  -webkit-backdrop-filter:blur(8px);
+  backdrop-filter:blur(8px);
+  align-items:center;justify-content:center;
+  padding:24px;
+}
+#harry-overlay.show{
+  display:flex;
+  animation:overlay-in 0.4s ease forwards;
+}
+@keyframes overlay-in{
+  from{opacity:0;}to{opacity:1;}
+}
+
+#harry-msg{
+  background:white;
+  border-radius:clamp(20px,5vw,28px);
+  padding:clamp(28px,7vw,36px) clamp(24px,6vw,32px);
+  max-width:320px;width:100%;
+  text-align:center;
+  box-shadow:0 20px 60px rgba(0,0,0,0.25);
+  animation:msg-pop 0.5s cubic-bezier(.34,1.56,.64,1) forwards;
+}
+@keyframes msg-pop{
+  from{opacity:0;transform:scale(0.85) translateY(16px);}
+  to{opacity:1;transform:scale(1) translateY(0);}
+}
+
+.harry-avatar{font-size:clamp(40px,11vw,52px);margin-bottom:6px;}
+.harry-name{font-size:clamp(11px,3vw,13px);color:var(--text-light);margin-bottom:12px;letter-spacing:0.05em;}
+#harry-text{
+  font-size:clamp(15px,4vw,17px);
+  color:var(--text);
+  line-height:1.8;
+  margin-bottom:20px;
+}
+
+.btn-again{
+  background:linear-gradient(135deg,var(--gold),#c9956f);
+  color:white;
+  border:none;border-radius:99px;
+  padding:clamp(11px,3vw,13px) clamp(24px,7vw,32px);
+  font-family:inherit;font-size:clamp(13px,3.5vw,15px);font-weight:700;
+  cursor:pointer;transition:transform 0.15s;
+  display:block;width:100%;
+}
+.btn-again:active{transform:scale(0.96);}
+
+/* Particle */
+.particle{
+  position:fixed;
+  border-radius:50%;
+  pointer-events:none;
+  z-index:0;
+}
+</style>
+</head>
+<body>
+
+<div id="bg-glow"></div>
+<canvas id="particle-canvas"></canvas>
+
+<div id="app">
+  <div class="title-area">
+    <div class="game-title">借我兩分鐘</div>
+    <div class="game-sub" id="top-sub">讓我們一起呼吸</div>
+  </div>
+
+  <div id="char-wrap">
+    <div class="glow-ring" id="ring1"></div>
+    <div class="glow-ring" id="ring2"></div>
+    <div class="glow-ring" id="ring3"></div>
+    <div id="aura"></div>
+    <img id="char-img" src="meditation.png" alt="若若"
+         onerror="this.style.display='none';document.getElementById('char-emoji').style.display='block';">
+    <div id="char-emoji">🧘‍♀️</div>
+  </div>
+
+  <div id="breath-ring-wrap">
+    <svg id="breath-svg" viewBox="0 0 100 100">
+      <circle id="breath-track" cx="50" cy="50" r="44"/>
+      <circle id="breath-progress" cx="50" cy="50" r="44"/>
+    </svg>
+    <div class="breath-label">
+      <div id="breath-text">準備好了嗎</div>
+      <div id="breath-count"></div>
+    </div>
+  </div>
+
+  <div class="calm-wrap">
+    <div class="calm-label">平靜指數</div>
+    <div class="calm-track"><div id="calm-fill"></div></div>
+    <div id="calm-status">輕輕點下開始</div>
+  </div>
+
+  <button class="btn" id="btn-start" onclick="startSession()">開始</button>
+  <div class="btn" id="btn-hold">按住吸氣，放開吐氣</div>
+
+  <div id="harry-overlay">
+    <div id="harry-msg">
+      <div class="harry-avatar">❤️</div>
+      <div class="harry-name">Harry 說</div>
+      <div id="harry-text">你很棒唷 我在這裡 會沒事的</div>
+      <button class="btn-again" onclick="resetSession()">再來一次 🌿</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Line browser height fix ───────────────────────────────────────
+function fixHeight(){
+  const h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  document.body.style.height     = h + 'px';
+  document.body.style.minHeight  = h + 'px';
+  document.getElementById('app').style.height    = h + 'px';
+  document.getElementById('app').style.minHeight = h + 'px';
+}
+fixHeight();
+window.addEventListener('resize', fixHeight);
+window.addEventListener('load', () => setTimeout(fixHeight, 200));
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', fixHeight);
+  window.visualViewport.addEventListener('scroll', fixHeight);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ★ 設定區（可以修改）
+const TOTAL_CYCLES  = 5;    // 呼吸循環次數
+const INHALE_SEC    = 4;    // 吸氣秒數
+const HOLD_SEC      = 1;    // 憋氣秒數
+const EXHALE_SEC    = 6;    // 吐氣秒數
+const WORKER_URL    = 'https://summer-violet-47f1.harryhsu-cw.workers.dev/';
+// ══════════════════════════════════════════════════════════════════
+
+const HARRY_SYSTEM = `你是 Harry，若若的男友，現在在英國，十月會回台灣。
+若若剛完成了一段呼吸冥想練習，請給她一句溫柔的鼓勵。
+說話方式：簡短自然，像傳訊息，不超過三句話。
+不說「加油」「你可以的」這種空話。
+永遠站在她那邊，覺得她很厲害。`;
+
+// ── State ─────────────────────────────────────────────────────────
+let phase = 'idle'; // idle | inhale | hold | exhale
+let cyclesDone = 0;
+let phaseTimer = null;
+let phaseStart = 0;
+let phaseDuration = 0;
+let rafId = null;
+let isHolding = false;
+
+// ── Canvas particles ──────────────────────────────────────────────
+const canvas = document.getElementById('particle-canvas');
+const ctx = canvas.getContext('2d');
+let particles = [];
+
+function resizeCanvas(){
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+function spawnParticle(inhaling) {
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  const angle = Math.random() * Math.PI * 2;
+  const dist  = inhaling ? canvas.width * 0.5 : 60;
+  const targetDist = inhaling ? 60 : canvas.width * 0.5;
+
+  particles.push({
+    x: cx + Math.cos(angle) * dist,
+    y: cy + Math.sin(angle) * dist,
+    tx: cx + Math.cos(angle) * targetDist,
+    ty: cy + Math.sin(angle) * targetDist,
+    progress: 0,
+    speed: 0.004 + Math.random() * 0.004,
+    size: 2 + Math.random() * 3,
+    alpha: 0.6 + Math.random() * 0.4,
+    color: inhaling
+      ? `hsl(${200 + Math.random()*40}, 60%, 80%)`
+      : `hsl(${20 + Math.random()*30}, 80%, 80%)`,
+  });
+}
+
+function animateParticles(){
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  particles = particles.filter(p => p.progress < 1);
+  particles.forEach(p => {
+    p.progress += p.speed;
+    const e = 1 - Math.pow(1 - p.progress, 3);
+    const x = p.x + (p.tx - p.x) * e;
+    const y = p.y + (p.ty - p.y) * e;
+    const alpha = p.alpha * (1 - p.progress * 0.7);
+    ctx.beginPath();
+    ctx.arc(x, y, p.size, 0, Math.PI * 2);
+    ctx.fillStyle = p.color.replace(')', `, ${alpha})`).replace('hsl', 'hsla');
+    ctx.fill();
+  });
+  requestAnimationFrame(animateParticles);
+}
+animateParticles();
+
+// Spawn interval
+let spawnInterval = null;
+function startSpawning(inhaling){
+  clearInterval(spawnInterval);
+  spawnInterval = setInterval(() => spawnParticle(inhaling), 80);
+}
+function stopSpawning(){ clearInterval(spawnInterval); }
+
+// ── SVG breath ring ───────────────────────────────────────────────
+const progressEl = document.getElementById('breath-progress');
+const circumference = 2 * Math.PI * 44;
+progressEl.style.strokeDasharray  = circumference;
+progressEl.style.strokeDashoffset = circumference;
+
+function setRingProgress(pct) {
+  progressEl.style.strokeDashoffset = circumference * (1 - pct);
+}
+
+// ── Background color ──────────────────────────────────────────────
+function lerp(a, b, t){ return a + (b - a) * t; }
+
+// 三段漸變：灰藍 → 暖米橙 → 亮橙黃
+const BG_COLORS = [
+  [143, 168, 196],   // 灰藍
+  [232, 213, 176],   // 暖米
+  [240, 168,  85],   // 暖橙
+];
+
+function updateBg(cyclesDone) {
+  const pct = Math.min(cyclesDone / TOTAL_CYCLES, 1);
+  let r, g, b;
+  if (pct < 0.5) {
+    const t = pct * 2;
+    r = Math.round(lerp(BG_COLORS[0][0], BG_COLORS[1][0], t));
+    g = Math.round(lerp(BG_COLORS[0][1], BG_COLORS[1][1], t));
+    b = Math.round(lerp(BG_COLORS[0][2], BG_COLORS[1][2], t));
+  } else {
+    const t = (pct - 0.5) * 2;
+    r = Math.round(lerp(BG_COLORS[1][0], BG_COLORS[2][0], t));
+    g = Math.round(lerp(BG_COLORS[1][1], BG_COLORS[2][1], t));
+    b = Math.round(lerp(BG_COLORS[1][2], BG_COLORS[2][2], t));
+  }
+  // 光暈效果：中央亮、四周暗
+  document.getElementById('bg-glow').style.background =
+    `radial-gradient(ellipse 80% 65% at 50% 52%,
+      rgba(${r},${g},${b},0.55) 0%,
+      rgba(${r},${g},${b},0.15) 50%,
+      rgba(255,255,255,0) 80%
+    )`;
+}
+
+// ── Calm status texts ─────────────────────────────────────────────
+const STATUS_TEXTS = [
+  '輕輕點下開始',
+  '慢慢來，不急 🌿',
+  '你做得很好 ✨',
+  '感覺到了嗎，慢慢平靜了',
+  '快到了，再一下 💙',
+  '你做到了 🌸',
+];
+
+// ── Start ─────────────────────────────────────────────────────────
+function startSession(){
+  cyclesDone = 0;
+  const btnStart = document.getElementById('btn-start');
+  btnStart.classList.add('hidden');
+  setTimeout(() => btnStart.style.display = 'none', 400);
+  document.getElementById('btn-hold').style.display   = 'none';  // auto-runs, no need to show
+  document.getElementById('harry-overlay').classList.remove('show');
+  document.getElementById('top-sub').textContent      = '跟著呼吸，什麼都不用想';
+  updateBg(0);
+  startInhale();
+}
+
+// ── Inhale ────────────────────────────────────────────────────────
+function startInhale(){
+  phase = 'inhale';
+  phaseDuration = INHALE_SEC * 1000;
+  phaseStart = performance.now();
+
+  document.getElementById('breath-text').textContent  = '吸氣';
+  document.getElementById('breath-count').textContent = `第 ${cyclesDone + 1} / ${TOTAL_CYCLES} 次`;
+  progressEl.style.stroke = '#7aaed4';
+
+  startSpawning(true);
+  animatePhase();
+
+  // scale up char + aura
+  document.getElementById('char-img').style.transform   = 'scale(1.06)';
+  document.getElementById('char-emoji').style.transform = 'scale(1.06)';
+  document.getElementById('aura').style.transform       = 'scale(1.3)';
+  document.getElementById('aura').style.opacity         = '0.8';
+}
+
+// ── Hold ──────────────────────────────────────────────────────────
+function startHold(){
+  phase = 'hold';
+  phaseDuration = HOLD_SEC * 1000;
+  phaseStart = performance.now();
+  stopSpawning();
+  document.getElementById('breath-text').textContent = '稍停';
+  animatePhase();
+}
+
+// ── Exhale ────────────────────────────────────────────────────────
+function startExhale(){
+  phase = 'exhale';
+  phaseDuration = EXHALE_SEC * 1000;
+  phaseStart = performance.now();
+
+  document.getElementById('breath-text').textContent = '吐氣';
+  progressEl.style.stroke = '#d4956f';
+
+  startSpawning(false);
+  animatePhase();
+
+  document.getElementById('char-img').style.transform   = 'scale(1)';
+  document.getElementById('char-emoji').style.transform = 'scale(1)';
+  document.getElementById('aura').style.transform       = 'scale(1)';
+  document.getElementById('aura').style.opacity         = '0.5';
+}
+
+// ── Animate current phase ─────────────────────────────────────────
+function animatePhase(){
+  cancelAnimationFrame(rafId);
+
+  function step(now){
+    const elapsed = now - phaseStart;
+    const pct = Math.min(elapsed / phaseDuration, 1);
+
+    if (phase === 'inhale' || phase === 'hold') {
+      setRingProgress(phase === 'inhale' ? pct : 1);
+    } else {
+      setRingProgress(1 - pct);
+    }
+
+    if (pct < 1) {
+      rafId = requestAnimationFrame(step);
+    } else {
+      onPhaseEnd();
+    }
+  }
+  rafId = requestAnimationFrame(step);
+}
+
+function onPhaseEnd(){
+  stopSpawning();
+  if (phase === 'inhale') {
+    startHold();
+  } else if (phase === 'hold') {
+    startExhale();
+  } else if (phase === 'exhale') {
+    cyclesDone++;
+    updateBg(cyclesDone);
+
+    // update calm
+    const calmpct = (cyclesDone / TOTAL_CYCLES) * 100;
+    document.getElementById('calm-fill').style.width  = calmpct + '%';
+    document.getElementById('calm-status').textContent = STATUS_TEXTS[cyclesDone] || '';
+
+    if (cyclesDone >= TOTAL_CYCLES) {
+      finishSession();
+    } else {
+      startInhale();
+    }
+  }
+}
+
+// ── Finish ────────────────────────────────────────────────────────
+async function finishSession(){
+  cancelAnimationFrame(rafId);
+  stopSpawning();
+  phase = 'done';
+
+  document.getElementById('breath-text').textContent  = '完成 🌸';
+  document.getElementById('breath-count').textContent = '';
+  document.getElementById('btn-hold').style.display   = 'none';
+  document.getElementById('top-sub').textContent      = '你做到了';
+
+  // fetch Harry message
+  try {
+    const resp = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system: HARRY_SYSTEM,
+        messages: [{ role: 'user', content: '若若剛完成了五次呼吸冥想練習。' }],
+      }),
+    });
+    const data = await resp.json();
+    if (data.ok && data.result) {
+      document.getElementById('harry-text').textContent = data.result;
+    } else {
+      document.getElementById('harry-text').textContent = '你很棒唷 我在這裡 會沒事的';
+    }
+  } catch {
+    document.getElementById('harry-text').textContent = '你很棒唷 我在這裡 會沒事的';
+  }
+
+  document.getElementById('harry-overlay').classList.add('show');
+  setRingProgress(1);
+}
+
+// ── Reset ─────────────────────────────────────────────────────────
+function resetSession(){
+  cancelAnimationFrame(rafId);
+  stopSpawning();
+  phase = 'idle';
+  cyclesDone = 0;
+  particles = [];
+
+  document.getElementById('bg-glow').style.background = `radial-gradient(ellipse 80% 65% at 50% 52%, rgba(143,168,196,0.45) 0%, rgba(255,255,255,0) 75%)`;
+  const bs = document.getElementById('btn-start');
+  bs.style.display = 'block';
+  bs.classList.remove('hidden');
+  document.getElementById('btn-hold').style.display   = 'none';
+  document.getElementById('harry-overlay').classList.remove('show');
+  document.getElementById('calm-fill').style.width    = '0%';
+  document.getElementById('calm-status').textContent  = '輕輕點下開始';
+  document.getElementById('breath-text').textContent  = '準備好了嗎';
+  document.getElementById('breath-count').textContent = '';
+  document.getElementById('top-sub').textContent      = '讓我們一起呼吸';
+  document.getElementById('char-img').style.transform   = '';
+  document.getElementById('char-emoji').style.transform = '';
+  document.getElementById('aura').style.transform       = '';
+  document.getElementById('aura').style.opacity         = '0.5';
+  setRingProgress(0);
+}
+</script>
+</body>
+</html>
