@@ -54,25 +54,6 @@
             padding: 0 8px; /* 給角落裝飾留空間 */
         }
 
-        .deco-img {
-            position: absolute;
-            z-index: 20;
-            pointer-events: none;
-            mix-blend-mode: multiply;
-            object-fit: contain;
-        }
-        .deco-tl {
-            width: clamp(60px, 18vw, 90px);
-            top: -16px;
-            left: -8px;
-        }
-        .deco-tr {
-            width: clamp(54px, 16vw, 80px);
-            top: -16px;
-            right: -8px;
-            transform: scaleX(-1);
-        }
-
         /* 卡片本體 */
         .card {
             width: 100%;
@@ -92,9 +73,10 @@
         }
         .roro-img {
             width: 100%;
-            height: auto;
+            max-height: clamp(200px, 45vh, 320px);
+            object-fit: cover;
+            object-position: center 20%;
             display: block;
-            object-fit: contain;
         }
 
         /* 獎品區 */
@@ -223,9 +205,6 @@
     </div>
 
     <div class="card-outer">
-        <img class="deco-img deco-tl" src="82024d77b8c5e72390ff80690e4f4207.jpg" alt="">
-        <img class="deco-img deco-tr" src="images.jpeg" alt="">
-
         <div class="card">
             <div class="card-img-zone" id="img-zone">
                 <img class="roro-img" src="wakeup.png" alt="若若"
