@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>若若占卜師 🔮</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap');
+
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; touch-action:manipulation; }
+
+:root {
+  --bg: #1a1228;
+  --bg2: #231838;
+  --gold: #e8c97a;
+  --gold2: #f5e0a0;
+  --rose: #c97a9e;
+  --text: #f0e6d3;
+  --text-dim: #a090b0;
+  --card-front: #2a1f3d;
+  --card-back: #1e1530;
+  --sand: #d4a882;
+}
+
+html { height:100%; overflow:hidden; position:fixed; width:100%; }
+
+body {
+  height:100%;
+  width:100%;
+  overflow:hidden;
+  background: var(--bg);
+  font-family: 'Zen Maru Gothic','PingFang TC','Apple Color Emoji',sans-serif;
+  color: var(--text);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ── Stars BG ── */
+.stars {
+  position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden;
+}
+.star {
+  position:absolute;
+  width:2px; height:2px;
+  background:white;
+  border-radius:50%;
+  animation: twinkle var(--d,3s) ease-in-out infinite;
+  animation-delay: var(--dl,0s);
+  opacity: var(--op,0.6);
+}
+@keyframes twinkle {
+  0%,100%{opacity:var(--op,0.6);transform:scale(1);}
+  50%{opacity:0.1;transform:scale(0.5);}
+}
+
+/* ── Main layout ── */
+#app {
+  position:relative; z-index:1;
+  display:flex; flex-direction:column; align-items:center;
+  width:100%; max-width:420px;
+  padding: clamp(16px,4vw,24px) clamp(16px,4vw,20px) clamp(12px,3vw,16px);
+  gap: clamp(10px,2.5vw,16px);
+}
+
+/* ── Header ── */
+.header { text-align:center; }
+
+.subtitle {
+  font-size: clamp(10px,2.8vw,12px);
+  color: var(--text-dim);
+  letter-spacing:0.25em;
+  text-transform:uppercase;
+  margin-bottom:4px;
+}
+
+.title {
+  font-size: clamp(22px,6vw,28px);
+  font-weight:700;
+  color: var(--gold);
+  letter-spacing:0.05em;
+  text-shadow: 0 0 20px rgba(232,201,122,0.4);
+}
+
+/* ── Date oracle ── */
+.date-oracle {
+  font-size: clamp(11px,3vw,13px);
+  color: var(--text-dim);
+  letter-spacing:0.1em;
+}
+
+/* ── Mystic circle ── */
+.mystic-circle {
+  position:relative;
+  width: clamp(130px,38vw,170px);
+  height: clamp(130px,38vw,170px);
+  flex-shrink:0;
+}
+
+.circle-ring {
+  position:absolute; inset:0;
+  border-radius:50%;
+  border: 1.5px solid rgba(232,201,122,0.25);
+  animation: spin-slow 20s linear infinite;
+}
+.circle-ring::before, .circle-ring::after {
+  content:'';
+  position:absolute;
+  width:6px; height:6px;
+  background:var(--gold);
+  border-radius:50%;
+  top:-3px; left:50%;
+  transform:translateX(-50%);
+  box-shadow:0 0 8px var(--gold);
+}
+.circle-ring::after { top:auto; bottom:-3px; }
+.circle-ring-2 {
+  position:absolute;
+  inset:12px;
+  border-radius:50%;
+  border:1px solid rgba(201,122,158,0.2);
+  animation: spin-slow 15s linear infinite reverse;
+}
+
+.crystal {
+  position:absolute; inset:20px;
+  border-radius:50%;
+  background: radial-gradient(circle at 35% 35%, #3d2860, #1a0f2e);
+  cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  font-size: clamp(38px,11vw,52px);
+  box-shadow:
+    0 0 30px rgba(201,122,158,0.3),
+    inset 0 0 20px rgba(100,60,160,0.4);
+  transition: transform 0.2s cubic-bezier(.34,1.56,.64,1), box-shadow 0.3s;
+  overflow:hidden;
+}
+.crystal::before {
+  content:'';
+  position:absolute;
+  width:40%; height:40%;
+  top:15%; left:20%;
+  background: radial-gradient(circle, rgba(255,255,255,0.15), transparent 70%);
+  border-radius:50%;
+  pointer-events:none;
+}
+.crystal:active { transform:scale(0.94); }
+.crystal.glowing {
+  box-shadow:
+    0 0 60px rgba(201,122,158,0.6),
+    0 0 100px rgba(232,201,122,0.2),
+    inset 0 0 30px rgba(100,60,160,0.5);
+  animation: crystal-pulse 1.5s ease-in-out infinite;
+}
+@keyframes crystal-pulse {
+  0%,100%{box-shadow:0 0 40px rgba(201,122,158,0.5),inset 0 0 20px rgba(100,60,160,0.4);}
+  50%{box-shadow:0 0 80px rgba(201,122,158,0.8),0 0 120px rgba(232,201,122,0.3),inset 0 0 40px rgba(100,60,160,0.6);}
+}
+@keyframes spin-slow { to { transform:rotate(360deg); } }
+
+/* floating rune symbols around the crystal */
+.runes {
+  position:absolute; inset:0; pointer-events:none;
+}
+.rune {
+  position:absolute;
+  font-size: clamp(10px,3vw,13px);
+  color: var(--gold);
+  opacity:0.4;
+  animation: orbit var(--orb-d,8s) linear infinite;
+  animation-delay: var(--orb-dl,0s);
+}
+@keyframes orbit {
+  from { transform: rotate(var(--start,0deg)) translateX(var(--r,58px)) rotate(calc(-1*var(--start,0deg))); }
+  to   { transform: rotate(calc(var(--start,0deg)+360deg)) translateX(var(--r,58px)) rotate(calc(-1*(var(--start,0deg)+360deg))); }
+}
+
+/* ── Prompt ── */
+.prompt-text {
+  font-size: clamp(13px,3.5vw,15px);
+  color: var(--text-dim);
+  text-align:center;
+  line-height:1.6;
+  min-height: 2.4em;
+  transition: opacity 0.4s;
+}
+
+/* ── Card area ── */
+#card-area {
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap: clamp(10px,2.5vw,14px);
+  opacity:0;
+  transform:translateY(12px);
+  transition: opacity 0.5s, transform 0.5s;
+  pointer-events:none;
+}
+#card-area.visible { opacity:1; transform:translateY(0); pointer-events:auto; }
+
+/* ── Tarot card ── */
+.tarot-deck {
+  display:flex;
+  gap: clamp(8px,2.5vw,12px);
+  justify-content:center;
+}
+
+.tarot-card {
+  width: clamp(72px,20vw,90px);
+  height: clamp(112px,31vw,140px);
+  perspective: 800px;
+  cursor:pointer;
+  flex-shrink:0;
+}
+
+.card-inner {
+  width:100%; height:100%;
+  position:relative;
+  transform-style: preserve-3d;
+  transition: transform 0.7s cubic-bezier(.4,0,.2,1);
+}
+
+.tarot-card.flipped .card-inner {
+  transform: rotateY(180deg);
+}
+
+.card-face {
+  position:absolute; inset:0;
+  border-radius: clamp(10px,2.5vw,14px);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:4px;
+  overflow:hidden;
+}
+
+/* Card back */
+.card-back {
+  background: linear-gradient(145deg, #2a1f45, #1a1030);
+  border: 1.5px solid rgba(232,201,122,0.3);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+.card-back-pattern {
+  position:absolute; inset:8px;
+  border:1px solid rgba(232,201,122,0.15);
+  border-radius: 8px;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 4px,
+    rgba(232,201,122,0.04) 4px,
+    rgba(232,201,122,0.04) 8px
+  );
+}
+.card-back-icon { font-size: clamp(22px,6vw,28px); position:relative; z-index:1; }
+
+/* Card front */
+.card-front {
+  transform: rotateY(180deg);
+  background: linear-gradient(160deg, var(--card-front), #1e1530);
+  border: 1.5px solid rgba(232,201,122,0.4);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.5), 0 0 20px rgba(232,201,122,0.1);
+  padding: clamp(6px,2vw,10px) clamp(4px,1.5vw,8px);
+}
+.card-category {
+  font-size: clamp(7px,2vw,9px);
+  letter-spacing:0.15em;
+  color: var(--gold);
+  opacity:0.7;
+  text-transform:uppercase;
+}
+.card-icon { font-size: clamp(28px,8vw,38px); }
+.card-title {
+  font-size: clamp(10px,2.8vw,12px);
+  font-weight:700;
+  color: var(--gold2);
+  text-align:center;
+  line-height:1.3;
+}
+.card-divider {
+  width:30px; height:1px;
+  background: rgba(232,201,122,0.3);
+  margin: 2px 0;
+}
+.card-desc {
+  font-size: clamp(8px,2.2vw,10px);
+  color: var(--text-dim);
+  text-align:center;
+  line-height:1.4;
+}
+
+/* Card hover shimmer */
+.tarot-card:not(.flipped):hover .card-back {
+  border-color: rgba(232,201,122,0.6);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4), 0 0 15px rgba(232,201,122,0.2);
+}
+
+/* ── Prophecy banner ── */
+#prophecy-banner {
+  width:100%;
+  background: linear-gradient(135deg, rgba(42,31,61,0.8), rgba(30,21,48,0.8));
+  border: 1px solid rgba(232,201,122,0.2);
+  border-radius: clamp(14px,4vw,18px);
+  padding: clamp(12px,3.5vw,16px) clamp(14px,4vw,18px);
+  opacity:0;
+  transform:translateY(8px);
+  transition: opacity 0.6s 0.2s, transform 0.6s 0.2s;
+  -webkit-backdrop-filter:blur(8px);
+  backdrop-filter:blur(8px);
+}
+#prophecy-banner.visible { opacity:1; transform:translateY(0); }
+
+.prophecy-label {
+  font-size: clamp(9px,2.4vw,11px);
+  color: var(--gold);
+  letter-spacing:0.2em;
+  text-transform:uppercase;
+  margin-bottom:6px;
+  opacity:0.8;
+}
+
+.prophecy-text {
+  font-size: clamp(13px,3.5vw,15px);
+  color: var(--text);
+  line-height:1.7;
+}
+
+/* ── Buttons ── */
+.btn-row {
+  display:flex; gap:10px; justify-content:center;
+  opacity:0; transition:opacity 0.5s 0.4s;
+}
+.btn-row.visible { opacity:1; }
+
+.btn {
+  border:none; border-radius:99px;
+  padding: clamp(10px,2.8vw,12px) clamp(20px,5.5vw,26px);
+  font-family:inherit;
+  font-size: clamp(12px,3.4vw,14px);
+  font-weight:700;
+  cursor:pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.btn:active { transform:scale(0.95); }
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--gold), #c9a855);
+  color: #1a1228;
+  box-shadow: 0 4px 16px rgba(232,201,122,0.3);
+}
+
+.btn-secondary {
+  background: rgba(255,255,255,0.08);
+  color: var(--text-dim);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
+/* ── Floating particles ── */
+.particle {
+  position:fixed;
+  pointer-events:none;
+  z-index:50;
+  font-size: clamp(12px,4vw,18px);
+  animation: particle-rise var(--d,2s) ease-out forwards;
+}
+@keyframes particle-rise {
+  0%  {opacity:1;transform:translateY(0) scale(1) rotate(0deg);}
+  100%{opacity:0;transform:translateY(-120px) scale(0.5) rotate(var(--rot,30deg));}
+}
+
+/* ── Reveal flash ── */
+.reveal-flash {
+  position:fixed; inset:0; pointer-events:none; z-index:200;
+  animation: r-flash 0.8s ease forwards;
+}
+@keyframes r-flash {
+  0%{background:rgba(232,201,122,0);}
+  20%{background:rgba(232,201,122,0.15);}
+  100%{background:rgba(232,201,122,0);}
+}
+</style>
+</head>
+<body>
+
+<div class="stars" id="stars"></div>
+
+<div id="app">
+  <div class="header">
+    <div class="subtitle">✦ 每日神諭 ✦</div>
+    <div class="title">若若占卜師</div>
+  </div>
+
+  <div class="date-oracle" id="date-display"></div>
+
+  <!-- 水晶球 -->
+  <div class="mystic-circle" id="mystic-circle">
+    <div class="circle-ring"></div>
+    <div class="circle-ring-2"></div>
+    <div class="runes" id="runes"></div>
+    <div class="crystal" id="crystal" onclick="startReading()">🔮</div>
+  </div>
+
+  <div class="prompt-text" id="prompt-text">輕觸水晶球<br>感應明日氣場</div>
+
+  <!-- 三張牌 -->
+  <div id="card-area">
+    <div class="tarot-deck" id="tarot-deck"></div>
+    <div id="prophecy-banner">
+      <div class="prophecy-label">✦ 今日神諭 ✦</div>
+      <div class="prophecy-text" id="prophecy-text"></div>
+    </div>
+    <div class="btn-row" id="btn-row">
+      <button class="btn btn-primary" onclick="resetReading()">🔮 再問一次</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Fix Line browser height ────────────────────────────────────────
+function fixHeight() { const h = window.innerHeight;
+  document.getElementById('app').style.height = h + 'px';
+  document.getElementById('app').style.minHeight = h + 'px'; }
+fixHeight();
+window.addEventListener('resize', fixHeight);
+window.addEventListener('load', () => setTimeout(fixHeight, 200));
+// Visual viewport API — more reliable inside Line webview
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', fixHeight);
+  window.visualViewport.addEventListener('scroll', fixHeight);
+}
+
+// ── Stars ─────────────────────────────────────────────────────────
+function makeStars() {
+  const el = document.getElementById('stars');
+  for (let i = 0; i < 80; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    s.style.left  = Math.random() * 100 + 'vw';
+    s.style.top   = Math.random() * 100 + 'vh';
+    s.style.setProperty('--d',  (2 + Math.random() * 4) + 's');
+    s.style.setProperty('--dl', (Math.random() * 4) + 's');
+    s.style.setProperty('--op', (0.2 + Math.random() * 0.7).toFixed(2));
+    if (Math.random() > 0.7) { s.style.width = s.style.height = '3px'; }
+    el.appendChild(s);
+  }
+}
+makeStars();
+
+// ── Runes ─────────────────────────────────────────────────────────
+const RUNE_GLYPHS = ['ᚠ','ᚢ','ᚦ','ᚨ','ᚱ','ᚲ','ᚷ','ᚹ','ᚺ','ᚾ','ᛁ','ᛃ','ᛇ','ᛈ','ᛉ','ᛊ','ᛏ','ᛒ','ᛖ','ᛗ','ᛚ','ᛜ','ᛞ','ᛟ'];
+function makeRunes() {
+  const el = document.getElementById('runes');
+  const r = el.parentElement.offsetWidth / 2;
+  for (let i = 0; i < 8; i++) {
+    const rune = document.createElement('div');
+    rune.className = 'rune';
+    rune.textContent = RUNE_GLYPHS[Math.floor(Math.random() * RUNE_GLYPHS.length)];
+    const startDeg = i * 45;
+    rune.style.setProperty('--start', startDeg + 'deg');
+    rune.style.setProperty('--r', (r - 8) + 'px');
+    rune.style.setProperty('--orb-d', (10 + Math.random() * 6) + 's');
+    rune.style.setProperty('--orb-dl', (-Math.random() * 10) + 's');
+    // position at center
+    rune.style.top  = '50%';
+    rune.style.left = '50%';
+    rune.style.transform = `translateX(-50%) translateY(-50%)`;
+    el.appendChild(rune);
+  }
+}
+makeRunes();
+
+// ── Date ──────────────────────────────────────────────────────────
+function formatDate() {
+  const d = new Date();
+  const days = ['日','一','二','三','四','五','六'];
+  return `${d.getFullYear()} 年 ${d.getMonth()+1} 月 ${d.getDate()} 日　星期${days[d.getDay()]}`;
+}
+document.getElementById('date-display').textContent = formatDate();
+
+// ── Card data ─────────────────────────────────────────────────────
+const CARD_DECKS = {
+  luck: [
+    { icon:'🌟', title:'星運爆表日',   desc:'明天的運氣已預約給你',      prophecy:'明日星象顯示：你的幸運光環半徑達三公尺，連旁邊的同事都會沾光。建議站在想好事的人旁邊。' },
+    { icon:'🍀', title:'偶然好運氣',   desc:'意外之喜悄悄靠近',          prophecy:'明日將有一件小事讓你心情突然變好，可能是一杯意外好喝的飲料，也可能是久違的綠燈。' },
+    { icon:'🌈', title:'彩虹後援團',   desc:'好事排隊等著你',            prophecy:'占卜顯示明日為「連鎖好事日」，第一件好事將引發後續好事，請記得接住每一個。' },
+    { icon:'🎲', title:'隨機祝福',     desc:'命運骰子點數最高',          prophecy:'明日命運骰子已暗中為你擲出六點，細節不可洩露，請保持期待心情。' },
+    { icon:'💎', title:'珍貴之日',     desc:'值得被好好對待的一天',      prophecy:'神諭確認：明日你的存在本身就是今天最大的幸運。這是官方認證。' },
+  ],
+  energy: [
+    { icon:'⚡️', title:'雷電能量日', desc:'充電完畢滿格出發',          prophecy:'明日能量槽異常充盈，建議把所有困難的事排在早上十點前，那時你會無敵。' },
+    { icon:'🌙', title:'月亮守護日', desc:'柔軟力量悄悄展開',          prophecy:'月相顯示明日適合慢慢來。不用衝，不用急，月亮說：你的步調就是最好的步調。' },
+    { icon:'🌸', title:'花開順心日', desc:'內心平靜如花園',            prophecy:'明日氣場溫柔，遇到難搞的事情會莫名被你的氣質化解，原因不明，但有效。' },
+    { icon:'☀️', title:'太陽元氣日', desc:'光芒從內往外散發',          prophecy:'占卜顯示明日你的笑容具有治癒功效，建議多笑。這是為了公共健康著想的建議。' },
+    { icon:'🌊', title:'流動自在日', desc:'順著感覺走就對了',          prophecy:'明日適合跟著直覺走，不需要想太多。水晶球說：你的第一個念頭通常是對的。' },
+  ],
+  social: [
+    { icon:'🤝', title:'人緣磁鐵日', desc:'身邊的人都想靠近你',        prophecy:'明日社交磁場異常強烈，請做好心理準備：可能會有人主動找你說話，甚至是你沒想到的人。' },
+    { icon:'💬', title:'說話順口日', desc:'每句話都恰到好處',          prophecy:'明日語言能量上升，你說的話會特別有份量。建議把重要的話留到明天說。' },
+    { icon:'🫂', title:'被愛包圍日', desc:'溫暖從四面八方湧來',        prophecy:'神諭確認明日將有人主動關心你，也許是一則訊息，也許是一個眼神，請睜大眼睛接收。' },
+    { icon:'🌻', title:'向日葵日',   desc:'你就是那束最亮的光',        prophecy:'占卜顯示明日你在任何群體中都會自然發光，不是因為你做了什麼，純粹是因為你是你。' },
+    { icon:'✨', title:'閃耀存在日', desc:'你的存在讓世界更好',        prophecy:'水晶球看見明日的你：被喜歡、被需要、被好好對待。這不是預測，這是事實的提前通知。' },
+  ],
+};
+
+const COMBOS = [
+  '三張牌齊聚：明日能量已滿載，請放心出門。',
+  '牌陣顯示：明日若若將解鎖「一切順利」成就。',
+  '神諭最終裁決：明日請帶著好心情，其他的交給星星安排。',
+  '水晶球最終顯示：明日是被宇宙掛號照顧的一天。',
+  '占卜師鄭重宣告：明日所有的不開心都會被好事蓋過去。',
+];
+
+// ── State ─────────────────────────────────────────────────────────
+let reading = false;
+let flippedCount = 0;
+let selectedCards = [];
+
+// ── Start reading ─────────────────────────────────────────────────
+function startReading() {
+  if (reading) return;
+  reading = true;
+
+  const crystal  = document.getElementById('crystal');
+  const prompt   = document.getElementById('prompt-text');
+  const cardArea = document.getElementById('card-area');
+
+  crystal.classList.add('glowing');
+  prompt.style.opacity = '0';
+
+  // pick 3 cards (one from each deck)
+  const categories = Object.keys(CARD_DECKS);
+  selectedCards = categories.map(cat => {
+    const deck = CARD_DECKS[cat];
+    return deck[Math.floor(Math.random() * deck.length)];
+  });
+  // shuffle order
+  selectedCards.sort(() => Math.random() - 0.5);
+
+  setTimeout(() => {
+    prompt.textContent = '氣場感應中⋯⋯';
+    prompt.style.opacity = '1';
+  }, 400);
+
+  setTimeout(() => {
+    prompt.style.opacity = '0';
+  }, 1400);
+
+  setTimeout(() => {
+    buildCards();
+    cardArea.classList.add('visible');
+    prompt.textContent = '翻開三張塔羅牌，看見明日命運 ✦';
+    prompt.style.opacity = '1';
+    spawnParticles();
+    flashReveal();
+  }, 1800);
+}
+
+function buildCards() {
+  const deck = document.getElementById('tarot-deck');
+  deck.innerHTML = '';
+  flippedCount = 0;
+
+  selectedCards.forEach((card, i) => {
+    const el = document.createElement('div');
+    el.className = 'tarot-card';
+    el.dataset.idx = i;
+    el.innerHTML = `
+      <div class="card-inner">
+        <div class="card-face card-back">
+          <div class="card-back-pattern"></div>
+          <div class="card-back-icon">✦</div>
+        </div>
+        <div class="card-face card-front">
+          <div class="card-category">${['運勢','能量','人緣'][i]}</div>
+          <div class="card-icon">${card.icon}</div>
+          <div class="card-title">${card.title}</div>
+          <div class="card-divider"></div>
+          <div class="card-desc">${card.desc}</div>
+        </div>
+      </div>`;
+    el.addEventListener('click', () => flipCard(el, i));
+    deck.appendChild(el);
+  });
+}
+
+function flipCard(el, idx) {
+  if (el.classList.contains('flipped')) return;
+  el.classList.add('flipped');
+  flippedCount++;
+
+  spawnParticles(2);
+
+  if (flippedCount === 3) {
+    setTimeout(showProphecy, 600);
+  }
+}
+
+function showProphecy() {
+  const combo   = COMBOS[Math.floor(Math.random() * COMBOS.length)];
+  const details = selectedCards.map(c => `「${c.title}」— ${c.prophecy}`).join('\n\n');
+  const full = details + '\n\n✦ ' + combo;
+
+  document.getElementById('prophecy-text').textContent = full;
+  document.getElementById('prophecy-banner').classList.add('visible');
+  document.getElementById('btn-row').classList.add('visible');
+  document.getElementById('prompt-text').style.opacity = '0';
+  spawnParticles(6);
+}
+
+// ── Reset ─────────────────────────────────────────────────────────
+function resetReading() {
+  reading = false;
+  flippedCount = 0;
+  selectedCards = [];
+
+  document.getElementById('crystal').classList.remove('glowing');
+  document.getElementById('card-area').classList.remove('visible');
+  document.getElementById('prophecy-banner').classList.remove('visible');
+  document.getElementById('btn-row').classList.remove('visible');
+  document.getElementById('tarot-deck').innerHTML = '';
+  document.getElementById('prompt-text').textContent = '輕觸水晶球\n感應明日氣場';
+  document.getElementById('prompt-text').style.opacity = '1';
+}
+
+// ── Particles ─────────────────────────────────────────────────────
+const SPARKS = ['✨','⭐','🌟','💫','✦','·'];
+function spawnParticles(count = 4) {
+  const crystal = document.getElementById('crystal');
+  const rect = crystal.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top  + rect.height / 2;
+
+  for (let i = 0; i < count; i++) {
+    setTimeout(() => {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      p.textContent = SPARKS[Math.floor(Math.random() * SPARKS.length)];
+      p.style.left = (cx + (Math.random() - 0.5) * 80) + 'px';
+      p.style.top  = (cy + (Math.random() - 0.5) * 60) + 'px';
+      p.style.setProperty('--d', (1.2 + Math.random() * 1) + 's');
+      p.style.setProperty('--rot', (Math.random() * 60 - 30) + 'deg');
+      document.body.appendChild(p);
+      setTimeout(() => p.remove(), 2500);
+    }, i * 120);
+  }
+}
+
+function flashReveal() {
+  const el = document.createElement('div');
+  el.className = 'reveal-flash';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 800);
+}
+</script>
+</body>
+</html>
