@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>若若拼圖 🧩</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;}
+
+:root{
+  --bg:#ede8e3;--sand:#d4a882;--blue:#4a9cc7;
+  --text:#5a4a3a;--text-light:#a09080;--white:#fff;
+  --pink:#f2a7b8;
+}
+
+html{height:100%;overflow:hidden;position:fixed;width:100%;}
+body{
+  height:100%;width:100%;overflow:hidden;
+  background:var(--bg);
+  font-family:'Zen Maru Gothic','PingFang TC','Apple Color Emoji',sans-serif;
+  color:var(--text);
+  display:flex;flex-direction:column;align-items:center;
+  padding-top:env(safe-area-inset-top);
+  padding-bottom:env(safe-area-inset-bottom);
+  touch-action:none;
+}
+
+.bg-blob{position:fixed;border-radius:50%;filter:blur(55px);opacity:0.3;pointer-events:none;z-index:0;}
+.b1{width:220px;height:220px;top:-50px;right:-50px;background:#f5c6d0;}
+.b2{width:180px;height:180px;bottom:120px;left:-50px;background:#c8e6c9;}
+
+#app{
+  position:relative;z-index:1;
+  width:100%;max-width:420px;
+  height:100%;
+  display:flex;flex-direction:column;
+  align-items:center;
+  padding:clamp(12px,3.5vw,18px) clamp(14px,4vw,18px) clamp(10px,3vw,14px);
+  padding-top:max(clamp(12px,3.5vw,18px),env(safe-area-inset-top));
+  padding-bottom:max(clamp(10px,3vw,14px),env(safe-area-inset-bottom));
+  gap:clamp(8px,2.5vw,12px);
+}
+
+/* ── Header ── */
+.header{text-align:center;flex-shrink:0;}
+.title{font-size:clamp(18px,5vw,22px);font-weight:700;color:var(--text);}
+.subtitle{font-size:clamp(11px,3vw,13px);color:var(--text-light);margin-top:2px;}
+
+/* ── Stats row ── */
+.stats-row{
+  display:flex;gap:8px;width:100%;flex-shrink:0;
+}
+.stat-chip{
+  flex:1;background:var(--white);border-radius:99px;
+  padding:clamp(6px,2vw,8px) clamp(10px,3vw,12px);
+  display:flex;align-items:center;gap:6px;
+  box-shadow:0 2px 10px rgba(90,74,58,0.08);
+  font-size:clamp(11px,3vw,13px);font-weight:600;color:var(--text);
+}
+.stat-icon{font-size:clamp(14px,4vw,16px);}
+
+/* ── Preview toggle ── */
+.preview-wrap{
+  position:relative;flex-shrink:0;
+  width:clamp(70px,20vw,88px);
+  height:clamp(70px,20vw,88px);
+  border-radius:clamp(10px,3vw,14px);
+  overflow:hidden;
+  box-shadow:0 4px 14px rgba(90,74,58,0.15);
+  cursor:pointer;
+  border:2px solid rgba(212,168,130,0.3);
+}
+.preview-img{width:100%;height:100%;object-fit:cover;display:block;}
+.preview-label{
+  position:absolute;bottom:0;left:0;right:0;
+  background:rgba(90,74,58,0.6);
+  color:white;font-size:clamp(8px,2.2vw,10px);
+  text-align:center;padding:3px;
+  font-weight:600;letter-spacing:0.05em;
+}
+
+/* ── Puzzle board ── */
+#board-wrap{
+  flex:1;min-height:0;
+  display:flex;align-items:center;justify-content:center;
+  width:100%;
+}
+
+#board{
+  display:grid;
+  gap:3px;
+  background:rgba(90,74,58,0.12);
+  border-radius:clamp(12px,3.5vw,16px);
+  padding:3px;
+  box-shadow:0 6px 24px rgba(90,74,58,0.12);
+  /* size set by JS */
+}
+
+.cell{
+  border-radius:clamp(8px,2.5vw,11px);
+  overflow:hidden;
+  position:relative;
+  background:rgba(255,255,255,0.5);
+  cursor:pointer;
+  transition:transform 0.1s;
+}
+.cell:active{transform:scale(0.96);}
+.cell.empty{background:rgba(90,74,58,0.06);cursor:default;}
+.cell.empty:active{transform:none;}
+
+.cell canvas{
+  width:100%;height:100%;
+  display:block;
+}
+
+/* correct flash */
+.cell.correct-flash{animation:correct-pop 0.4s ease forwards;}
+@keyframes correct-pop{
+  0%{transform:scale(1);}
+  40%{transform:scale(1.06);}
+  100%{transform:scale(1);}
+}
+
+/* ── Win overlay ── */
+#win-overlay{
+  display:none;position:fixed;inset:0;z-index:300;
+  background:rgba(237,232,227,0.93);
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+  flex-direction:column;align-items:center;justify-content:center;
+  padding:32px 20px;
+}
+#win-overlay.show{display:flex;animation:fade-in 0.5s ease;}
+@keyframes fade-in{from{opacity:0;transform:scale(0.95);}to{opacity:1;transform:scale(1);}}
+
+.win-card{
+  background:white;border-radius:28px;
+  padding:clamp(28px,7vw,36px) clamp(20px,6vw,28px);
+  text-align:center;
+  box-shadow:0 12px 48px rgba(90,74,58,0.14);
+  max-width:300px;width:100%;
+}
+.win-img{width:120px;height:120px;object-fit:contain;border-radius:16px;margin:0 auto 12px;display:block;}
+.win-emoji-big{font-size:clamp(52px,15vw,64px);margin-bottom:8px;}
+.win-title{font-size:clamp(18px,5.5vw,22px);font-weight:700;color:var(--text);margin-bottom:6px;}
+.win-sub{font-size:clamp(12px,3.3vw,14px);color:var(--text-light);margin-bottom:22px;line-height:1.6;}
+.win-moves{
+  background:linear-gradient(135deg,rgba(212,168,130,0.12),rgba(242,167,184,0.1));
+  border-radius:12px;padding:10px 16px;
+  font-size:clamp(12px,3.3vw,14px);color:var(--text);
+  margin-bottom:20px;
+}
+
+.btn-win{
+  background:linear-gradient(135deg,var(--sand),#c9956f);
+  color:white;border:none;border-radius:99px;
+  padding:clamp(12px,3.5vw,14px) clamp(24px,7vw,32px);
+  font-family:inherit;font-size:clamp(13px,3.8vw,15px);font-weight:700;
+  cursor:pointer;box-shadow:0 4px 16px rgba(212,168,130,0.35);
+  transition:transform 0.15s;display:block;width:100%;
+}
+.btn-win:active{transform:scale(0.96);}
+
+/* heart particles */
+.heart-p{
+  position:fixed;pointer-events:none;z-index:400;
+  animation:hp-float var(--d,2s) ease-out forwards;
+}
+@keyframes hp-float{
+  0%{opacity:1;transform:translateY(0) scale(1);}
+  100%{opacity:0;transform:translateY(-160px) scale(1.4);}
+}
+
+/* Number badge on tile */
+.tile-num{
+  position:absolute;bottom:3px;right:4px;
+  font-size:clamp(8px,2.2vw,10px);color:rgba(255,255,255,0.5);
+  font-weight:700;pointer-events:none;
+}
+
+/* ── Difficulty toggle ── */
+.diff-row{
+  display:flex;gap:6px;flex-shrink:0;
+}
+.diff-btn{
+  flex:1;border:2px solid transparent;border-radius:99px;
+  padding:clamp(7px,2vw,9px) 0;
+  font-family:inherit;font-size:clamp(12px,3.3vw,13px);font-weight:700;
+  cursor:pointer;transition:all 0.18s cubic-bezier(.34,1.56,.64,1);
+  background:rgba(255,255,255,0.6);color:var(--text-light);
+  box-shadow:0 2px 8px rgba(90,74,58,0.07);
+}
+.diff-btn.active{
+  background:var(--white);color:var(--text);
+  border-color:var(--sand);
+  box-shadow:0 3px 12px rgba(212,168,130,0.25);
+  transform:scale(1.04);
+}
+.diff-btn:active{transform:scale(0.96);}
+</style>
+</head>
+<body>
+
+<div class="bg-blob b1"></div>
+<div class="bg-blob b2"></div>
+
+<div id="app">
+  <div class="header">
+    <div class="title">🧩 若若拼圖</div>
+    <div class="subtitle" id="hint-text">點選任意拼圖開始移動</div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-chip">
+      <span class="stat-icon">👆</span>
+      <span>移動 <b id="move-count">0</b> 步</span>
+    </div>
+    <div class="stat-chip">
+      <span class="stat-icon">⏱️</span>
+      <span><b id="timer-display">0:00</b></span>
+    </div>
+    <div class="preview-wrap" onclick="togglePreview()">
+      <img class="preview-img" id="preview-img" src="" alt="參考圖">
+      <div class="preview-label">參考圖</div>
+    </div>
+  </div>
+
+  <div class="diff-row">
+    <button class="diff-btn active" id="btn-easy" onclick="setDifficulty('easy')">🌸 簡單（2×2）</button>
+    <button class="diff-btn" id="btn-hard" onclick="setDifficulty('hard')">🔥 困難（3×3）</button>
+  </div>
+
+  <div id="board-wrap">
+    <div id="board"></div>
+  </div>
+</div>
+
+<!-- Win -->
+<div id="win-overlay">
+  <div class="win-card">
+    <img class="win-img" id="win-img" src="" alt="若若"
+         onerror="this.style.display='none';document.getElementById('win-emoji-fallback').style.display='block';">
+    <div class="win-emoji-big" id="win-emoji-fallback" style="display:none">🎉</div>
+    <div class="win-title">拼好了！🎉</div>
+    <div class="win-sub" id="win-sub">若若出現了～</div>
+    <div class="win-moves" id="win-moves">共移動 0 步</div>
+    <button class="btn-win" onclick="newGame()">🧩 換一張再玩</button>
+  </div>
+</div>
+
+<script>
+// ── Fix height ─────────────────────────────────────────────────────
+function fixHeight(){
+  const h = window.innerHeight;
+  document.getElementById('app').style.height = h + 'px';
+}
+fixHeight();window.addEventListener('resize',fixHeight);
+window.addEventListener('load',()=>setTimeout(fixHeight,200));
+
+// ── Images ────────────────────────────────────────────────────────
+const IMAGES = [
+  'aftershower.png',
+  'beforeshower.png',
+  'ruoruo_normal.png',
+  'ruoruo_jump.png',
+  'ruoruo_heart.png',
+];
+const WIN_MSGS = {
+  'aftershower.png':  '洗澡後的若若出現了 🚿✨',
+  'beforeshower.png': '洗澡前的若若出現了 😴',
+  'ruoruo_normal.png':'普通若若集結完畢 🌸',
+  'ruoruo_jump.png':  '若若超開心在跳！💕',
+  'ruoruo_heart.png': '若若爆愛心了！💖',
+};
+
+// difficulty: 'easy' = 2x2, 'hard' = 3x3
+let difficulty = 'easy';
+let GRID = 2;
+let TOTAL = GRID * GRID;
+
+// ── State ─────────────────────────────────────────────────────────
+let currentImg = null;
+let tiles = [];          // array of original indices, last = empty
+let emptyIdx = TOTAL-1;
+let moves = 0;
+let timerInterval = null;
+let elapsed = 0;
+let started = false;
+let tileSize = 0;
+let imgBitmap = null;
+
+// ── Difficulty ───────────────────────────────────────────────────
+function setDifficulty(diff) {
+  difficulty = diff;
+  GRID  = diff === 'easy' ? 2 : 3;
+  TOTAL = GRID * GRID;
+  document.getElementById('btn-easy').classList.toggle('active', diff === 'easy');
+  document.getElementById('btn-hard').classList.toggle('active', diff === 'hard');
+  newGame();
+}
+
+// ── New game ──────────────────────────────────────────────────────
+function newGame() {
+  document.getElementById('win-overlay').classList.remove('show');
+  clearInterval(timerInterval);
+  elapsed = 0; moves = 0; started = false;
+  updateStats();
+
+  // Pick random image
+  currentImg = IMAGES[Math.floor(Math.random() * IMAGES.length)];
+  document.getElementById('preview-img').src = currentImg;
+  document.getElementById('win-img').src = currentImg;
+
+  // Load image then build board
+  const img = new Image();
+  img.onload = () => {
+    createImageBitmap(img).then(bmp => {
+      imgBitmap = bmp;
+      calcTileSize();
+      buildBoard();
+    }).catch(() => {
+      // fallback: use img element directly
+      imgBitmap = img;
+      calcTileSize();
+      buildBoard();
+    });
+  };
+  img.onerror = () => {
+    // If image not found, pick next
+    imgBitmap = null;
+    calcTileSize();
+    buildBoard();
+  };
+  img.src = currentImg;
+}
+
+function calcTileSize() {
+  const boardWrap = document.getElementById('board-wrap');
+  const available = Math.min(boardWrap.offsetWidth, boardWrap.offsetHeight) - 10;
+  // gap=3, padding=3 each side → total overhead = 3*2 + 3*(GRID-1)
+  const overhead = 6 + 3 * (GRID - 1);
+  tileSize = Math.floor((available - overhead) / GRID);
+}
+
+function buildBoard() {
+  // Create solved order, last slot = empty
+  tiles = Array.from({length: TOTAL}, (_, i) => i);
+  emptyIdx = TOTAL - 1;
+  tiles[emptyIdx] = -1; // -1 = empty
+
+  // Shuffle with valid solvable sequence
+  shuffle();
+
+  renderBoard();
+}
+
+function shuffle() {
+  // More shuffles for harder puzzles
+  const shuffleCount = GRID === 2 ? 20 : 120;
+  let lastEmpty = emptyIdx;
+  for (let i = 0; i < shuffleCount; i++) {
+    const neighbors = getNeighbors(emptyIdx);
+    // avoid immediate reverse
+    const candidates = neighbors.filter(n => n !== lastEmpty);
+    const pick = candidates.length ? candidates[Math.floor(Math.random()*candidates.length)] : neighbors[0];
+    lastEmpty = emptyIdx;
+    swapTiles(pick);
+  }
+}
+
+function renderBoard() {
+  const board = document.getElementById('board');
+  const size = tileSize * GRID + 3 * 2 + 3 * (GRID-1); // padding + gaps
+  board.style.width  = size + 'px';
+  board.style.height = size + 'px';
+  board.style.gridTemplateColumns = `repeat(${GRID}, 1fr)`;
+  board.style.gridTemplateRows    = `repeat(${GRID}, 1fr)`;
+  board.innerHTML = '';
+
+  tiles.forEach((tileVal, pos) => {
+    const cell = document.createElement('div');
+    cell.className = 'cell' + (tileVal === -1 ? ' empty' : '');
+    cell.style.width  = tileSize + 'px';
+    cell.style.height = tileSize + 'px';
+    cell.dataset.pos  = pos;
+
+    if (tileVal !== -1 && imgBitmap) {
+      const canvas = document.createElement('canvas');
+      canvas.width  = tileSize;
+      canvas.height = tileSize;
+      const ctx = canvas.getContext('2d');
+
+      const col = tileVal % GRID;
+      const row = Math.floor(tileVal / GRID);
+      const sw = imgBitmap.width  / GRID;
+      const sh = imgBitmap.height / GRID;
+
+      ctx.drawImage(imgBitmap,
+        col * sw, row * sh, sw, sh,
+        0, 0, tileSize, tileSize
+      );
+      cell.appendChild(canvas);
+    } else if (tileVal !== -1) {
+      // no image: show number
+      cell.style.background = '#f0ebe5';
+      cell.style.display = 'flex';
+      cell.style.alignItems = 'center';
+      cell.style.justifyContent = 'center';
+      cell.style.fontSize = (tileSize * 0.35) + 'px';
+      cell.style.fontWeight = '700';
+      cell.style.color = 'var(--text-light)';
+      cell.textContent = tileVal + 1;
+    }
+
+    cell.addEventListener('click', () => tryMove(pos));
+    board.appendChild(cell);
+  });
+}
+
+// ── Move logic ────────────────────────────────────────────────────
+function getNeighbors(pos) {
+  const neighbors = [];
+  const row = Math.floor(pos / GRID);
+  const col = pos % GRID;
+  if (row > 0)        neighbors.push(pos - GRID);
+  if (row < GRID - 1) neighbors.push(pos + GRID);
+  if (col > 0)        neighbors.push(pos - 1);
+  if (col < GRID - 1) neighbors.push(pos + 1);
+  return neighbors;
+}
+
+function tryMove(clickedPos) {
+  if (tiles[clickedPos] === -1) return;
+  const neighbors = getNeighbors(clickedPos);
+  if (!neighbors.includes(emptyIdx)) return;
+
+  if (!started) {
+    started = true;
+    startTimer();
+  }
+
+  swapTiles(clickedPos);
+  moves++;
+  updateStats();
+  renderBoard();
+
+  // flash the tile that just moved (now at emptyIdx's old position)
+  // check win
+  if (checkWin()) setTimeout(triggerWin, 300);
+}
+
+function swapTiles(pos) {
+  [tiles[pos], tiles[emptyIdx]] = [tiles[emptyIdx], tiles[pos]];
+  emptyIdx = pos;
+}
+
+function checkWin() {
+  for (let i = 0; i < TOTAL - 1; i++) {
+    if (tiles[i] !== i) return false;
+  }
+  return tiles[TOTAL-1] === -1;
+}
+
+// ── Timer ─────────────────────────────────────────────────────────
+function startTimer() {
+  clearInterval(timerInterval);
+  const startTime = Date.now() - elapsed * 1000;
+  timerInterval = setInterval(() => {
+    elapsed = Math.floor((Date.now() - startTime) / 1000);
+    updateStats();
+  }, 1000);
+}
+
+function updateStats() {
+  document.getElementById('move-count').textContent = moves;
+  const m = Math.floor(elapsed / 60);
+  const s = elapsed % 60;
+  document.getElementById('timer-display').textContent = m + ':' + String(s).padStart(2,'0');
+}
+
+// ── Win ───────────────────────────────────────────────────────────
+function triggerWin() {
+  clearInterval(timerInterval);
+  const m = Math.floor(elapsed / 60);
+  const s = elapsed % 60;
+  const timeStr = elapsed < 60 ? `${elapsed} 秒` : `${m} 分 ${s} 秒`;
+
+  const easyThresholds = [5, 10, 20];
+  const hardThresholds = [20, 40, 70];
+  const [t1, t2, t3] = GRID === 4 ? easyThresholds : hardThresholds;
+  const rating = moves <= t1 ? '🏆 大師級！' : moves <= t2 ? '🌟 厲害！' : moves <= t3 ? '😊 順利完成！' : '💪 終於拼好了！';
+
+  document.getElementById('win-sub').textContent = WIN_MSGS[currentImg] || '若若集結完畢！';
+  document.getElementById('win-moves').textContent = `${rating} 共移動 ${moves} 步・用時 ${timeStr}`;
+  document.getElementById('win-overlay').classList.add('show');
+  spawnHearts(24);
+}
+
+function spawnHearts(n) {
+  for (let i = 0; i < n; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'heart-p';
+      el.textContent = ['💕','🌸','✨','💖','⭐'][Math.floor(Math.random()*5)];
+      el.style.left   = (10 + Math.random()*80) + 'vw';
+      el.style.top    = (30 + Math.random()*50) + 'vh';
+      el.style.fontSize = (14 + Math.random()*14) + 'px';
+      el.style.setProperty('--d', (1.4 + Math.random()*1) + 's');
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 2800);
+    }, i * 70);
+  }
+}
+
+// ── Preview toggle ────────────────────────────────────────────────
+let previewShown = false;
+function togglePreview() {
+  const board = document.getElementById('board');
+  previewShown = !previewShown;
+  board.style.opacity = previewShown ? '0.15' : '1';
+  board.style.transition = 'opacity 0.3s';
+}
+
+// ── Start ─────────────────────────────────────────────────────────
+newGame();
+</script>
+</body>
+</html>
