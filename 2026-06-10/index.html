@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>若若吹蠟燭</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap');
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Zen Maru Gothic', "PingFang TC", sans-serif;
+            background: #d6eaf5;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .page {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 36px 20px 48px;
+            gap: 20px;
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .title-block { text-align: center; }
+        .title-main { font-size: 1.3rem; font-weight: 700; color: #1a3a5c; letter-spacing: 1px; }
+        .title-sub { font-size: 0.85rem; color: #6a9ab8; margin-top: 5px; }
+
+        /* 麥克風狀態提示 */
+        .mic-status {
+            font-size: 0.8rem;
+            color: #6a9ab8;
+            text-align: center;
+            min-height: 20px;
+            transition: color 0.3s;
+        }
+        .mic-status.active { color: #4a9cc7; font-weight: 700; }
+        .mic-status.error  { color: #e07a7a; }
+
+        /* 吹氣力道計 */
+        .power-wrap {
+            width: 260px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        .power-label {
+            font-size: 0.75rem;
+            color: #6a9ab8;
+            letter-spacing: 2px;
+            font-weight: 600;
+        }
+        .power-bar-bg {
+            width: 100%;
+            height: 14px;
+            background: rgba(255,255,255,0.5);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .power-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #74c0e8, #4a9cc7);
+            border-radius: 10px;
+            transition: width 0.08s ease-out;
+        }
+        .power-bar-fill.strong {
+            background: linear-gradient(90deg, #f97316, #ef4444);
+        }
+
+        /* 閾值標記 */
+        .threshold-mark {
+            position: relative;
+            width: 100%;
+            height: 0;
+        }
+        .threshold-line {
+            position: absolute;
+            top: -14px;
+            left: 75%;
+            width: 2px;
+            height: 14px;
+            background: #e07a7a;
+            border-radius: 2px;
+        }
+        .threshold-text {
+            position: absolute;
+            top: -28px;
+            left: 72%;
+            font-size: 0.6rem;
+            color: #e07a7a;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        /* 蠟燭舞台 */
+        .candle-stage {
+            position: relative;
+            width: 200px;
+            height: 260px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+        }
+
+        /* 蠟燭本體 SVG */
+        .candle-svg {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 火焰（CSS 動畫） */
+        .flame-wrap {
+            position: absolute;
+            bottom: 175px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            transition: opacity 0.3s;
+        }
+
+        .flame {
+            position: relative;
+            width: 22px;
+            height: 50px;
+        }
+
+        /* 外焰 */
+        .flame-outer {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 22px;
+            height: 46px;
+            background: radial-gradient(ellipse at 50% 80%, #fbbf24 0%, #f97316 45%, #ef4444 80%, transparent 100%);
+            border-radius: 50% 50% 30% 30% / 60% 60% 40% 40%;
+            animation: flicker 1.2s ease-in-out infinite alternate;
+            transform-origin: bottom center;
+        }
+
+        /* 內焰 */
+        .flame-inner {
+            position: absolute;
+            bottom: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 10px;
+            height: 28px;
+            background: radial-gradient(ellipse at 50% 80%, #fef9c3 0%, #fde68a 60%, transparent 100%);
+            border-radius: 50% 50% 30% 30% / 60% 60% 40% 40%;
+            animation: flicker 0.9s ease-in-out infinite alternate-reverse;
+            transform-origin: bottom center;
+        }
+
+        /* 火焰閃爍 */
+        @keyframes flicker {
+            0%   { transform: translateX(-50%) scaleX(1)   scaleY(1)    rotate(-1deg); }
+            33%  { transform: translateX(-50%) scaleX(0.88) scaleY(1.05) rotate(1.5deg); }
+            66%  { transform: translateX(-50%) scaleX(1.08) scaleY(0.97) rotate(-2deg); }
+            100% { transform: translateX(-50%) scaleX(0.92) scaleY(1.08) rotate(1deg); }
+        }
+
+        /* 吹氣時火焰傾斜 */
+        .flame-wrap.blowing .flame-outer {
+            animation: flickerBlow 0.15s ease-in-out infinite alternate;
+        }
+        @keyframes flickerBlow {
+            0%   { transform: translateX(-50%) scaleX(0.6) scaleY(0.8) rotate(-25deg); }
+            100% { transform: translateX(-50%) scaleX(0.5) scaleY(0.7) rotate(-30deg); }
+        }
+
+        /* 熄滅煙霧 */
+        .smoke {
+            position: absolute;
+            bottom: 175px;
+            left: 50%;
+            transform: translateX(-50%);
+            pointer-events: none;
+            opacity: 0;
+        }
+        .smoke.show {
+            animation: smokeRise 2s ease-out forwards;
+        }
+        @keyframes smokeRise {
+            0%   { opacity: 0.7; transform: translateX(-50%) translateY(0) scale(0.5); }
+            50%  { opacity: 0.4; transform: translateX(-60%) translateY(-40px) scale(1.2); }
+            100% { opacity: 0;   transform: translateX(-40%) translateY(-80px) scale(1.8); }
+        }
+
+        /* 吹氣提示動畫 */
+        .blow-hint {
+            font-size: 0.9rem;
+            color: #6a9ab8;
+            text-align: center;
+            animation: pulse 1.8s infinite;
+            transition: opacity 0.4s;
+        }
+        .blow-hint.hide { opacity: 0; }
+        @keyframes pulse { 0%,100%{opacity:.5} 50%{opacity:1} }
+
+        /* 獎品 overlay */
+        .prize-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(20,50,80,0.45);
+            backdrop-filter: blur(5px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+        }
+        .prize-overlay.show { opacity: 1; pointer-events: auto; }
+
+        .prize-card {
+            width: 290px;
+            background: #fffdf5;
+            border-radius: 24px;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.2);
+            text-align: center;
+            transform: scale(0.7) translateY(40px);
+            opacity: 0;
+            transition: transform 0.5s cubic-bezier(0.175,0.885,0.32,1.275) 0.05s,
+                        opacity 0.35s ease 0.05s;
+            overflow: hidden;
+        }
+        .prize-overlay.show .prize-card { transform: scale(1) translateY(0); opacity: 1; }
+
+        .prize-card-top {
+            background: linear-gradient(135deg, #fde68a 0%, #fbbf24 100%);
+            padding: 28px 20px 22px;
+        }
+        .prize-card-emoji { font-size: 3rem; display: block; margin-bottom: 8px; }
+        .prize-card-tag { font-size: 0.65rem; color: #92600a; letter-spacing: 4px; font-weight: 700; }
+
+        .prize-card-body { padding: 22px 28px 8px; }
+        .prize-card-name { font-size: 1.08rem; font-weight: 700; color: #1a3a5c; line-height: 1.8; white-space: pre-line; }
+
+        .prize-card-btn {
+            display: block;
+            margin: 18px auto 24px;
+            width: calc(100% - 56px);
+            background: #4a9cc7;
+            color: #fff;
+            border: none;
+            padding: 13px;
+            font-family: 'Zen Maru Gothic', "PingFang TC", sans-serif;
+            font-size: 0.9rem;
+            font-weight: 700;
+            border-radius: 50px;
+            cursor: pointer;
+            letter-spacing: 1px;
+            transition: filter 0.2s;
+        }
+        .prize-card-btn:hover { filter: brightness(1.08); }
+
+        /* 麥克風授權按鈕 */
+        .mic-btn {
+            background: #4a9cc7;
+            color: #fff;
+            border: none;
+            padding: 13px 32px;
+            font-family: 'Zen Maru Gothic', "PingFang TC", sans-serif;
+            font-size: 0.95rem;
+            font-weight: 700;
+            border-radius: 50px;
+            cursor: pointer;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 16px rgba(74,156,199,0.35);
+            transition: all 0.2s;
+        }
+        .mic-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+        .mic-btn.hide { display: none; }
+
+        /* 粒子 */
+        .ptcl {
+            position: fixed;
+            pointer-events: none;
+            z-index: 200;
+            font-size: 1rem;
+            animation: fly 1s ease-out forwards;
+        }
+        @keyframes fly {
+            0%   { transform: translate(0,0) scale(1); opacity: 1; }
+            100% { transform: translate(var(--sx),var(--sy)) scale(0); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="page">
+
+    <div class="title-block">
+        <div class="title-main">若若吹蠟燭 🕯️</div>
+        <div class="title-sub">對著麥克風用力吹，熄滅蠟燭！</div>
+    </div>
+
+    <div class="mic-status" id="mic-status">請點擊下方開啟麥克風</div>
+
+    <!-- 吹氣力道計 -->
+    <div class="power-wrap">
+        <div class="power-label">吹氣力道</div>
+        <div class="power-bar-bg">
+            <div class="power-bar-fill" id="power-fill"></div>
+        </div>
+        <div class="threshold-mark">
+            <div class="threshold-line"></div>
+            <div class="threshold-text">熄滅線</div>
+        </div>
+    </div>
+
+    <!-- 蠟燭 -->
+    <div class="candle-stage">
+
+        <!-- 火焰 -->
+        <div class="flame-wrap" id="flame-wrap">
+            <div class="flame">
+                <div class="flame-outer"></div>
+                <div class="flame-inner"></div>
+            </div>
+        </div>
+
+        <!-- 熄滅煙霧 -->
+        <div class="smoke" id="smoke">💨</div>
+
+        <!-- 蠟燭 SVG -->
+        <svg class="candle-svg" viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">
+            <!-- 燭台盤子 -->
+            <ellipse cx="100" cy="242" rx="55" ry="10" fill="#d4b896" stroke="#b8956a" stroke-width="1.5"/>
+            <rect x="60" y="232" width="80" height="12" rx="4" fill="#e8d0a8" stroke="#c8a870" stroke-width="1.5"/>
+
+            <!-- 蠟燭本體 -->
+            <rect x="78" y="80" width="44" height="155" rx="8"
+                  fill="#fdfaf0" stroke="#e8e0c8" stroke-width="1.5"/>
+
+            <!-- 蠟燭漸層（蠟燭感） -->
+            <rect x="80" y="82" width="18" height="151" rx="6" fill="rgba(255,255,255,0.4)"/>
+
+            <!-- 流下的蠟（裝飾） -->
+            <path d="M88 100 Q84 120 86 145 Q85 150 88 152" stroke="#f0e8d0" stroke-width="3" fill="none" stroke-linecap="round"/>
+            <path d="M108 95 Q112 115 110 140" stroke="#f0e8d0" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+            <!-- 燭芯 -->
+            <line x1="100" y1="80" x2="100" y2="65" stroke="#5c3d2e" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+    </div>
+
+    <div class="blow-hint" id="blow-hint">💨 深呼吸，對著手機用力吹！</div>
+
+    <button class="mic-btn" id="mic-btn" onclick="startMic()">🎤 開啟麥克風</button>
+
+</div>
+
+<!-- 獎品 overlay -->
+<div class="prize-overlay" id="prize-overlay">
+    <div class="prize-card">
+        <div class="prize-card-top">
+            <span class="prize-card-emoji" id="prize-emoji">🎁</span>
+            <div class="prize-card-tag">✦ 今日獎勵 ✦</div>
+        </div>
+        <div class="prize-card-body">
+            <div class="prize-card-name" id="prize-name">...</div>
+        </div>
+        <button class="prize-card-btn" onclick="resetGame()">再玩一次 🕯️</button>
+    </div>
+</div>
+
+<script>
+const prizes = [
+    { emoji:"🤗", name:"生日快樂！加油喔小若若～\(想過生日就是生日)" },
+];
+
+// 吹滅閾值：音量需超過此值（0~255）才算吹滅
+const BLOW_THRESHOLD = 180;
+// 需持續超過閾值的幀數（約 0.3 秒）
+const SUSTAIN_FRAMES = 9;
+
+const micStatus  = document.getElementById('mic-status');
+const powerFill  = document.getElementById('power-fill');
+const flameWrap  = document.getElementById('flame-wrap');
+const smoke      = document.getElementById('smoke');
+const blowHint   = document.getElementById('blow-hint');
+const micBtn     = document.getElementById('mic-btn');
+const prizeOverlay = document.getElementById('prize-overlay');
+const prizeEmoji   = document.getElementById('prize-emoji');
+const prizeName    = document.getElementById('prize-name');
+
+let analyser, dataArray, animId;
+let sustainCount = 0;
+let blown = false;
+
+async function startMic() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const source   = audioCtx.createMediaStreamSource(stream);
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.6;
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
+        source.connect(analyser);
+
+        micBtn.classList.add('hide');
+        micStatus.innerText = '🎤 麥克風已開啟，準備吹！';
+        micStatus.classList.add('active');
+
+        detectBlow();
+    } catch(e) {
+        micStatus.innerText = '❌ 無法開啟麥克風，請確認權限';
+        micStatus.classList.add('error');
+    }
+}
+
+function detectBlow() {
+    if (blown) return;
+    analyser.getByteFrequencyData(dataArray);
+
+    // 取低頻平均（吹氣主要在低頻）
+    const lowFreqSlice = dataArray.slice(0, 20);
+    const avg = lowFreqSlice.reduce((a,b) => a+b, 0) / lowFreqSlice.length;
+
+    // 更新力道條（0-255 → 0-100%）
+    const pct = Math.min(100, (avg / 255) * 100 * 2.2);
+    powerFill.style.width = pct + '%';
+
+    // 達到熄滅線才改色
+    if (avg > BLOW_THRESHOLD) {
+        powerFill.classList.add('strong');
+        flameWrap.classList.add('blowing');
+        sustainCount++;
+    } else {
+        powerFill.classList.remove('strong');
+        flameWrap.classList.remove('blowing');
+        sustainCount = Math.max(0, sustainCount - 2);
+    }
+
+    // 持續夠久 → 熄滅
+    if (sustainCount >= SUSTAIN_FRAMES) {
+        extinguish();
+        return;
+    }
+
+    animId = requestAnimationFrame(detectBlow);
+}
+
+function extinguish() {
+    blown = true;
+    cancelAnimationFrame(animId);
+
+    // 熄滅火焰
+    flameWrap.style.opacity = '0';
+    smoke.classList.add('show');
+    powerFill.style.width = '0%';
+    blowHint.classList.add('hide');
+    micStatus.innerText = '🌬️ 吹滅了！';
+
+    // 震動回饋（手機）
+    if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
+
+    // 粒子慶祝
+    setTimeout(() => {
+        sparkle();
+        setTimeout(showPrize, 800);
+    }, 500);
+}
+
+function showPrize() {
+    const p = prizes[Math.floor(Math.random() * prizes.length)];
+    prizeEmoji.innerText = p.emoji;
+    prizeName.innerText  = p.name;
+    prizeOverlay.classList.add('show');
+}
+
+function resetGame() {
+    blown = false;
+    sustainCount = 0;
+    flameWrap.style.opacity = '1';
+    flameWrap.classList.remove('blowing');
+    smoke.classList.remove('show');
+    blowHint.classList.remove('hide');
+    prizeOverlay.classList.remove('show');
+    micStatus.innerText = '🎤 麥克風已開啟，準備吹！';
+    powerFill.style.width = '0%';
+    powerFill.classList.remove('strong');
+    if (analyser) detectBlow();
+}
+
+function sparkle() {
+    ['✨','🌟','🕯️','💛','🎊'].forEach((s,i) => {
+        for (let j=0; j<3; j++) setTimeout(()=>{
+            const el = document.createElement('div');
+            el.className='ptcl'; el.innerText=s;
+            el.style.left=(10+Math.random()*80)+'vw';
+            el.style.top=(10+Math.random()*70)+'vh';
+            el.style.setProperty('--sx',(Math.random()-.5)*90+'px');
+            el.style.setProperty('--sy',-(40+Math.random()*80)+'px');
+            document.body.appendChild(el);
+            el.addEventListener('animationend',()=>el.remove());
+        },(i*3+j)*60);
+    });
+}
+</script>
+</body>
+</html>
