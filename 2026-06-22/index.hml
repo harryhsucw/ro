@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>瓶中信</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;}
+
+html{ height:100%; }
+body{
+  width:100%;height:100%;
+  overflow:hidden;
+  position:fixed;top:0;left:0;
+  font-family:'Zen Maru Gothic','PingFang TC','Apple Color Emoji',sans-serif;
+  background:#0d2a35;
+  touch-action:none;
+  display:flex;
+  justify-content:center;
+}
+
+/* 最大寬度容器 */
+#viewport{
+  position:relative;
+  width:100%;
+  max-width:480px;
+  height:100%;
+  overflow:hidden;
+}
+
+/* ── 全螢幕圖層 ── */
+.scene{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  background-size:cover;
+  background-position:center center;
+  transition:opacity 2.5s ease;
+}
+
+#scene-back{
+  z-index:1;
+  background-image:url('freedive_back.png');
+  opacity:0;
+}
+#scene-front{
+  z-index:2;
+  background-image:url('freedive_front.png');
+  opacity:0;
+}
+
+/* 深色漸層：底部讓文字清楚 */
+.scene-mask{
+  position:absolute;inset:0;
+  background:linear-gradient(
+    to top,
+    rgba(5,20,30,0.55) 0%,
+    rgba(5,20,30,0.10) 45%,
+    transparent 100%
+  );
+  pointer-events:none;
+}
+
+/* ── 第一段文字（背影 沉下去） ── */
+#text-sink{
+  position:absolute;
+  bottom:clamp(120px,28vh,200px);
+  left:0;right:0;
+  z-index:10;
+  text-align:center;
+  color:white;
+  font-size:clamp(16px,4.5vw,20px);
+  font-weight:400;
+  letter-spacing:0.12em;
+  line-height:1.9;
+  text-shadow:0 0 20px rgba(80,190,220,0.7), 0 2px 10px rgba(0,0,0,0.4);
+  opacity:0;
+  transform:translateY(8px);
+  transition:opacity 2s ease, transform 2s ease;
+  pointer-events:none;
+  padding:0 clamp(24px,8vw,48px);
+}
+#text-sink.show{ opacity:1; transform:translateY(0); }
+
+/* ── 第二段文字（仰望 看見光） ── */
+#text-light{
+  position:absolute;
+  top:clamp(80px,18vh,140px);
+  left:0;right:0;
+  z-index:10;
+  text-align:center;
+  color:white;
+  font-size:clamp(16px,4.5vw,20px);
+  font-weight:400;
+  letter-spacing:0.12em;
+  line-height:1.9;
+  text-shadow:0 0 30px rgba(200,240,255,0.8), 0 2px 10px rgba(0,0,0,0.3);
+  opacity:0;
+  transform:translateY(-8px);
+  transition:opacity 2s ease, transform 2s ease;
+  pointer-events:none;
+  padding:0 clamp(24px,8vw,48px);
+}
+#text-light.show{ opacity:1; transform:translateY(0); }
+
+/* ── 瓶子 ── */
+#bottle-wrap{
+  position:absolute;
+  bottom:clamp(60px,14vh,110px);
+  left:50%;transform:translateX(-50%);
+  z-index:20;
+  display:flex;flex-direction:column;align-items:center;
+  gap:10px;
+  opacity:0;
+  transition:opacity 1.5s ease;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+#bottle-wrap.show{ opacity:1; }
+#bottle-wrap:active{ transform:translateX(-50%) scale(0.94); }
+
+.bottle-emoji{
+  font-size:clamp(44px,12vw,58px);
+  animation:bottle-float 3.5s ease-in-out infinite;
+  filter:drop-shadow(0 0 16px rgba(120,220,240,0.6));
+}
+@keyframes bottle-float{
+  0%,100%{ transform:translateY(0) rotate(-5deg); }
+  50%{     transform:translateY(-10px) rotate(5deg); }
+}
+
+.bottle-hint{
+  font-size:clamp(11px,3vw,13px);
+  color:rgba(255,255,255,0.65);
+  letter-spacing:0.1em;
+  animation:hint-blink 2.5s ease-in-out infinite;
+}
+@keyframes hint-blink{
+  0%,100%{ opacity:0.5; }
+  50%{     opacity:1; }
+}
+
+/* ── 信紙展開 overlay ── */
+#letter-overlay{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  z-index:50;
+  background:rgba(5,20,35,0.7);
+  -webkit-backdrop-filter:blur(6px);
+  backdrop-filter:blur(6px);
+  display:flex;align-items:center;justify-content:center;
+  padding:clamp(20px,6vw,40px) clamp(16px,5vw,32px);
+  opacity:0;pointer-events:none;
+  transition:opacity 0.5s ease;
+}
+#letter-overlay.show{
+  opacity:1;pointer-events:auto;
+}
+
+/* 信紙本體 */
+#letter-card{
+  width:100%;max-width:340px;
+  background:linear-gradient(160deg, #faf7f0, #f5f0e8);
+  border-radius:clamp(14px,4vw,20px);
+  box-shadow:0 12px 48px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.1);
+  overflow:hidden;
+  transform:scaleY(0.05) translateY(-20px);
+  transform-origin:top center;
+  transition:transform 0.7s cubic-bezier(0.34,1.56,0.64,1);
+  opacity:0;
+  transition:transform 0.7s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease;
+}
+#letter-card.open{
+  transform:scaleY(1) translateY(0);
+  opacity:1;
+}
+
+/* 信紙頂部裝飾 */
+.letter-header{
+  background:linear-gradient(135deg, #7bbec8, #5aa8b8);
+  padding:clamp(14px,4vw,18px) clamp(18px,5vw,24px);
+  display:flex;align-items:center;gap:10px;
+}
+.letter-icon{ font-size:clamp(20px,5.5vw,26px); }
+.letter-from{
+  font-size:clamp(11px,3vw,13px);
+  color:rgba(255,255,255,0.9);
+  letter-spacing:0.1em;
+}
+.letter-title{
+  font-size:clamp(14px,4vw,16px);
+  font-weight:700;
+  color:white;
+  margin-top:1px;
+}
+
+/* 信紙內容 */
+.letter-body{
+  padding:clamp(20px,5.5vw,28px) clamp(18px,5vw,24px);
+}
+
+/* 信紙橫線 */
+.letter-lines{
+  position:absolute;inset:0;
+  background-image:repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent calc(clamp(26px,7vw,32px) - 1px),
+    rgba(180,200,210,0.25) calc(clamp(26px,7vw,32px) - 1px),
+    rgba(180,200,210,0.25) clamp(26px,7vw,32px)
+  );
+  pointer-events:none;
+}
+
+.letter-body-inner{
+  position:relative;
+}
+
+#letter-text{
+  font-size:clamp(15px,4.2vw,17px);
+  color:#3a3028;
+  line-height:clamp(26px,7vw,32px);
+  letter-spacing:0.04em;
+  white-space:pre-line;
+  position:relative;z-index:1;
+}
+
+/* 簽名 */
+.letter-sign{
+  margin-top:clamp(18px,5vw,24px);
+  text-align:right;
+  font-size:clamp(13px,3.5vw,15px);
+  color:#7bbec8;
+  font-style:italic;
+  letter-spacing:0.06em;
+  position:relative;z-index:1;
+}
+
+/* 關閉按鈕 */
+.letter-footer{
+  padding:clamp(10px,3vw,14px) clamp(18px,5vw,24px) clamp(14px,4vw,18px);
+  border-top:1px solid rgba(180,200,210,0.3);
+  display:flex;justify-content:center;
+}
+.btn-close{
+  border:none;
+  background:linear-gradient(135deg, #7bbec8, #5aa8b8);
+  color:white;
+  border-radius:99px;
+  padding:clamp(9px,2.5vw,12px) clamp(24px,7vw,32px);
+  font-family:inherit;
+  font-size:clamp(12px,3.3vw,14px);
+  font-weight:600;
+  letter-spacing:0.08em;
+  cursor:pointer;
+  transition:transform 0.15s, filter 0.15s;
+}
+.btn-close:active{ transform:scale(0.96); }
+
+/* ── 光線粒子（仰望時） ── */
+.light-particle{
+  position:absolute;
+  width:2px;height:2px;
+  border-radius:50%;
+  background:white;
+  pointer-events:none;
+  z-index:5;
+  animation:lp-drift var(--d,4s) ease-out forwards;
+  animation-delay:var(--dl,0s);
+}
+@keyframes lp-drift{
+  0%  { opacity:0;  transform:translate(0,0) scale(1); }
+  20% { opacity:0.8; }
+  100%{ opacity:0;  transform:translate(var(--tx,10px), var(--ty,-80px)) scale(0.3); }
+}
+
+/* ── 泡泡 ── */
+.sea-bubble{
+  position:absolute;border-radius:50%;
+  background:radial-gradient(circle at 35% 35%, rgba(255,255,255,0.5), rgba(200,240,240,0.1));
+  border:1px solid rgba(255,255,255,0.25);
+  pointer-events:none;z-index:4;
+  animation:sea-rise var(--rise,14s) ease-in forwards;
+  opacity:0;
+}
+@keyframes sea-rise{
+  0%  { transform:translateY(0) translateX(0);   opacity:0; }
+  8%  { opacity:0.6; }
+  90% { opacity:0.4; }
+  100%{ transform:translateY(var(--ry,-110vh)) translateX(var(--rx,15px)); opacity:0; }
+}
+</style>
+</head>
+<body>
+<div id="viewport">
+
+<!-- 場景 -->
+<div class="scene" id="scene-front"><div class="scene-mask"></div></div>
+<div class="scene" id="scene-back"><div class="scene-mask"></div></div>
+
+<!-- 文字 -->
+<div id="text-sink">放鬆<br>這個世界會溫柔的護著你</div>
+<div id="text-light">只要抬頭<br>總會有光</div>
+
+<!-- 瓶子 -->
+<div id="bottle-wrap" onclick="openLetter()">
+  <div class="bottle-emoji">🫙</div>
+  <div class="bottle-hint">輕觸打開信瓶</div>
+</div>
+
+<!-- 信紙 -->
+<div id="letter-overlay" onclick="closeLetter()">
+  <div id="letter-card" onclick="event.stopPropagation()">
+    <div class="letter-header">
+      <div class="letter-icon">💌</div>
+      <div>
+        <div class="letter-from">發現一封瓶中信</div>
+        <div class="letter-title">給最可愛的若若</div>
+      </div>
+    </div>
+    <div class="letter-body">
+      <div class="letter-body-inner">
+        <div class="letter-lines"></div>
+        <div id="letter-text"></div>
+        <div class="letter-sign">— Harry</div>
+      </div>
+    </div>
+    <div class="letter-footer">
+      <button class="btn-close" onclick="closeLetter()">收好了 💙</button>
+    </div>
+  </div>
+</div>
+
+<div id="bubbles"></div>
+<div id="particles"></div>
+
+</div><!-- end viewport -->
+
+<script>
+// ── Line height fix ───────────────────────────────────────────────
+function fixHeight(){
+  const h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  document.body.style.height = h + 'px';
+  const vp = document.getElementById('viewport');
+  if(vp) vp.style.height = h + 'px';
+}
+fixHeight();
+window.addEventListener('resize', fixHeight);
+window.addEventListener('load', () => setTimeout(fixHeight, 200));
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize', fixHeight);
+  window.visualViewport.addEventListener('scroll', fixHeight);
+}
+
+// ── 信件內容（固定輪流）────────────────────────────────────────
+const LETTERS = [
+  '你知道嗎\n海底最安靜的地方\n就是我想帶你去的地方\n\n因為你值得擁有\n這樣的安靜',
+  '不管今天發生了什麼\n你還是那個\n敢一個人跳進海裡的人\n\n這樣的你\n讓我好驕傲',
+  '壓力再大\n水都會幫你扛著\n就像我一直在\n\n你不是一個人',
+  '光從水面透下來\n是專門為你留的\n\n今天也謝謝你\n沒有放棄自己',
+  '你比你想的\n更能承受一切\n\n我在水面上等你\n哪裡都不去',
+];
+
+// 每次進來隨機抽一封，但不重複上一封
+let lastLetterIdx = -1;
+function pickLetter(){
+  let idx;
+  do { idx = Math.floor(Math.random() * LETTERS.length); }
+  while(idx === lastLetterIdx && LETTERS.length > 1);
+  lastLetterIdx = idx;
+  return LETTERS[idx];
+}
+
+// ── 泡泡 ─────────────────────────────────────────────────────────
+let bubbleInterval = null;
+function spawnBubble(){
+  const c = document.getElementById('bubbles');
+  const b = document.createElement('div');
+  b.className = 'sea-bubble';
+  const size = 4 + Math.random() * 12;
+  b.style.width  = size + 'px';
+  b.style.height = size + 'px';
+  b.style.left   = (5 + Math.random() * 90) + 'vw';
+  b.style.bottom = (-size) + 'px';
+  const rise = 12 + Math.random() * 10;
+  b.style.setProperty('--rise', rise + 's');
+  b.style.setProperty('--ry',   -(80 + Math.random()*40) + 'vh');
+  b.style.setProperty('--rx',   (Math.random()-0.5)*30 + 'px');
+  c.appendChild(b);
+  setTimeout(() => b.remove(), (rise+1)*1000);
+}
+
+// ── 光粒子（仰望場景）────────────────────────────────────────────
+let particleInterval = null;
+function spawnParticle(){
+  const c = document.getElementById('particles');
+  const p = document.createElement('div');
+  p.className = 'light-particle';
+  p.style.left = (20 + Math.random()*60) + 'vw';
+  p.style.top  = (5  + Math.random()*40) + 'vh';
+  p.style.setProperty('--d',  (2 + Math.random()*3) + 's');
+  p.style.setProperty('--dl', '0s');
+  p.style.setProperty('--tx', (Math.random()-0.5)*40 + 'px');
+  p.style.setProperty('--ty', -(40+Math.random()*60) + 'px');
+  p.style.width = p.style.height = (1 + Math.random()*2) + 'px';
+  c.appendChild(p);
+  setTimeout(() => p.remove(), 7000);
+}
+
+// ── 主流程 ───────────────────────────────────────────────────────
+function run(){
+  // Step 1: 背影圖淡入
+  const back = document.getElementById('scene-front');
+  back.style.opacity = '1';
+
+  // Step 2: 2.5秒後「沉下去」文字出現
+  setTimeout(() => {
+    document.getElementById('text-sink').classList.add('show');
+    bubbleInterval = setInterval(spawnBubble, 2200);
+  }, 800);
+
+  // Step 3: 5秒後切換到仰望圖
+  setTimeout(() => {
+    document.getElementById('text-sink').classList.remove('show');
+
+    setTimeout(() => {
+      back.style.opacity = '0';
+      const front = document.getElementById('scene-back');
+      front.style.opacity = '1';
+    }, 1000);
+
+    // Step 4: 仰望文字
+    setTimeout(() => {
+      document.getElementById('text-light').classList.add('show');
+      particleInterval = setInterval(spawnParticle, 600);
+    }, 2200);
+
+    // Step 5: 瓶子出現
+    setTimeout(() => {
+      document.getElementById('text-light').classList.remove('show');
+      setTimeout(() => {
+        document.getElementById('bottle-wrap').classList.add('show');
+      }, 1200);
+    }, 5000);
+
+  }, 5500);
+}
+
+// ── 信瓶互動 ─────────────────────────────────────────────────────
+function openLetter(){
+  const text = pickLetter();
+  document.getElementById('letter-text').textContent = text;
+
+  const overlay = document.getElementById('letter-overlay');
+  const card    = document.getElementById('letter-card');
+
+  overlay.classList.add('show');
+  // 下一幀觸發展開動畫
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      card.classList.add('open');
+    });
+  });
+}
+
+function closeLetter(){
+  const overlay = document.getElementById('letter-overlay');
+  const card    = document.getElementById('letter-card');
+  card.classList.remove('open');
+  setTimeout(() => { overlay.classList.remove('show'); }, 400);
+}
+
+// 啟動
+run();
+</script>
+</body>
+</html>
