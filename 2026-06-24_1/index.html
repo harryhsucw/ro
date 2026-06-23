@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>早安</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;}
+
+html{ height:100%; }
+body{
+  width:100%;height:100%;
+  overflow:hidden;
+  position:fixed;top:0;left:0;
+  font-family:'Zen Maru Gothic','PingFang TC','Apple Color Emoji',sans-serif;
+  background:#f5e8d5;
+  display:flex;justify-content:center;
+  touch-action:none;
+}
+
+#viewport{
+  position:relative;
+  width:100%;max-width:480px;
+  height:100%;
+  overflow:hidden;
+}
+
+/* ── 紙張質感疊加 ── */
+#paper-texture{
+  position:absolute;inset:0;z-index:100;
+  pointer-events:none;
+  opacity:0.045;
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(80,50,20,0.08) 2px, rgba(80,50,20,0.08) 3px),
+    repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(80,50,20,0.05) 3px, rgba(80,50,20,0.05) 4px);
+}
+
+/* ── 水彩背景 ── */
+#watercolor-bg{
+  position:absolute;inset:0;z-index:0;
+  transition:background 3s ease;
+  /* 初始：清晨淡橘米白 */
+  background:
+    radial-gradient(ellipse 100% 60% at 50% 100%, rgba(255,200,120,0.55) 0%, transparent 65%),
+    radial-gradient(ellipse 80% 50% at 30% 80%,  rgba(255,220,160,0.3) 0%, transparent 60%),
+    linear-gradient(to top, #f0c890 0%, #f5dbb0 30%, #faecd0 65%, #fdf5e5 100%);
+}
+
+/* 水彩暈染斑塊——模擬手繪 */
+#wash-layer{
+  position:absolute;inset:0;z-index:1;pointer-events:none;
+  transition:opacity 4s ease, background 4s ease;
+  opacity:0.6;
+  background:
+    radial-gradient(ellipse 55% 35% at 25% 70%, rgba(255,180,100,0.22) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 28% at 75% 60%, rgba(200,160,220,0.12) 0%, transparent 65%),
+    radial-gradient(ellipse 60% 40% at 50% 90%, rgba(255,150,80,0.18) 0%, transparent 70%);
+}
+
+/* ── 太陽 ── */
+#sun{
+  position:absolute;
+  width:clamp(70px,18vw,90px);
+  height:clamp(70px,18vw,90px);
+  border-radius:50%;
+  left:50%;
+  bottom:clamp(32%,38%,44%);
+  transform:translateX(-50%) translateY(clamp(90px,22vw,110px));
+  opacity:0;
+  z-index:2;
+  /* 水彩暈染的太陽，不要太數位 */
+  background:radial-gradient(circle,
+    rgba(255,255,240,0.95) 0%,
+    rgba(255,225,130,0.85) 35%,
+    rgba(255,180,80,0.6)  65%,
+    rgba(255,150,60,0.0)  100%
+  );
+  box-shadow:
+    0 0 clamp(40px,10vw,60px) clamp(20px,5vw,30px) rgba(255,200,100,0.35),
+    0 0 clamp(80px,20vw,120px) clamp(40px,10vw,60px) rgba(255,170,60,0.15);
+  filter:blur(2px);
+  transition:transform 4s cubic-bezier(.15,.85,.35,1), opacity 2s ease, box-shadow 4s ease;
+}
+
+/* ── 雲彩（純 CSS） ── */
+.cloud{
+  position:absolute;
+  border-radius:50%;
+  opacity:0;
+  z-index:2;
+  filter:blur(clamp(8px,2.5vw,14px));
+  transition:opacity 3s ease;
+  pointer-events:none;
+}
+#cloud1{
+  width:clamp(120px,35vw,160px);height:clamp(50px,14vw,65px);
+  background:rgba(255,235,200,0.55);
+  top:clamp(12%,18%,22%);left:-5%;
+  animation:cloud-drift 18s ease-in-out infinite;
+}
+#cloud2{
+  width:clamp(90px,26vw,120px);height:clamp(38px,11vw,50px);
+  background:rgba(220,200,240,0.4);
+  top:clamp(8%,13%,18%);right:-3%;
+  animation:cloud-drift 24s ease-in-out infinite reverse;
+}
+#cloud3{
+  width:clamp(70px,20vw,95px);height:clamp(28px,8vw,38px);
+  background:rgba(255,220,170,0.45);
+  top:clamp(20%,26%,30%);left:15%;
+  animation:cloud-drift 20s ease-in-out 3s infinite;
+}
+@keyframes cloud-drift{
+  0%,100%{transform:translateX(0);}
+  50%{transform:translateX(clamp(12px,4vw,20px));}
+}
+
+/* ── 若若圖（全螢幕） ── */
+#ruoruo-wrap{
+  position:absolute;
+  inset:0;
+  z-index:5;
+  opacity:0;
+  transition:opacity 2.5s ease;
+  pointer-events:none;
+}
+#ruoruo-img{
+  width:100%;height:100%;
+  object-fit:cover;
+  object-position:center top;
+  display:block;
+}
+#ruoruo-emoji{
+  position:absolute;inset:0;
+  font-size:clamp(90px,26vw,120px);
+  display:none;
+  align-items:center;justify-content:center;
+}
+
+/* ── 光塵粒子（Canvas） ── */
+#particle-canvas{
+  position:absolute;inset:0;z-index:4;pointer-events:none;
+}
+
+/* ── 起床按鈕 ── */
+#btn-go{
+  position:absolute;
+  bottom:max(clamp(28px,8vh,50px), env(safe-area-inset-bottom, 28px));
+  left:50%;transform:translateX(-50%);
+  z-index:30;
+  /* 水彩紙感按鈕 */
+  border:1.5px solid rgba(180,130,70,0.4);
+  background:rgba(255,240,210,0.65);
+  -webkit-backdrop-filter:blur(6px);
+  backdrop-filter:blur(6px);
+  color:#8a5a28;
+  border-radius:99px;
+  padding:clamp(12px,3.5vw,15px) clamp(32px,9vw,44px);
+  font-family:inherit;
+  font-size:clamp(14px,4vw,16px);
+  font-weight:600;
+  letter-spacing:0.12em;
+  cursor:pointer;
+  opacity:0;pointer-events:none;
+  transition:opacity 1.5s ease, transform 0.2s;
+  white-space:nowrap;
+  box-shadow:0 2px 12px rgba(180,120,40,0.15);
+}
+#btn-go.show{opacity:1;pointer-events:auto;}
+#btn-go:active{transform:translateX(-50%) scale(0.96);}
+
+/* ── Harry 抱抱畫面 ── */
+#harry-overlay{
+  position:absolute;inset:0;z-index:60;
+  opacity:0;pointer-events:none;
+  transition:opacity 1.2s ease;
+  overflow:hidden;
+}
+#harry-overlay.show{opacity:1;pointer-events:auto;}
+
+/* Harry 圖佔滿背景 */
+#harry-bg-img{
+  position:absolute;inset:0;
+  background-image:url('comfort.png');
+  background-size:cover;
+  background-position:center 15%;
+  /* multiply 讓白底融合 */
+  filter:saturate(1.02) brightness(1.0);
+}
+#harry-bg-emoji{
+  position:absolute;inset:0;
+  display:none;
+  font-size:clamp(120px,35vw,160px);
+  align-items:center;justify-content:center;
+}
+
+/* 底部暖色遮罩 */
+#harry-mask{
+  position:absolute;inset:0;
+  background:linear-gradient(
+    to top,
+    rgba(240,180,80,0.45) 0%,
+    rgba(255,220,140,0.15) 40%,
+    transparent 70%
+  );
+  pointer-events:none;
+}
+
+/* Harry 話語卡 */
+#harry-card{
+  position:absolute;
+  bottom:max(clamp(36px,10vh,60px), env(safe-area-inset-bottom, 36px));
+  left:50%;transform:translateX(-50%) translateY(16px);
+  width:clamp(240px,75vw,310px);
+  background:rgba(255,248,235,0.88);
+  border:1px solid rgba(200,160,90,0.35);
+  border-radius:clamp(16px,4.5vw,22px);
+  padding:clamp(16px,4.5vw,22px) clamp(18px,5vw,24px);
+  text-align:center;
+  box-shadow:0 4px 24px rgba(160,100,30,0.15), 0 0 0 1px rgba(255,255,255,0.5);
+  opacity:0;
+  transition:opacity 0.9s ease 0.5s, transform 0.9s ease 0.5s;
+  -webkit-backdrop-filter:blur(8px);
+  backdrop-filter:blur(8px);
+}
+#harry-overlay.show #harry-card{
+  opacity:1;
+  transform:translateX(-50%) translateY(0);
+}
+
+.harry-card-from{
+  font-size:clamp(10px,2.8vw,12px);
+  color:rgba(140,100,50,0.7);
+  letter-spacing:0.15em;
+  margin-bottom:8px;
+}
+.harry-card-text{
+  font-size:clamp(15px,4.2vw,17px);
+  color:#6b4a28;
+  line-height:1.8;
+  font-weight:500;
+}
+
+/* 散落花瓣 */
+.petal{
+  position:absolute;
+  font-size:clamp(12px,3.5vw,16px);
+  pointer-events:none;
+  z-index:70;
+  animation:petal-fall var(--d,3s) ease-out forwards;
+  animation-delay:var(--dl,0s);
+}
+@keyframes petal-fall{
+  0%  {opacity:0;transform:translate(0,0) rotate(0deg) scale(1);}
+  10% {opacity:1;}
+  100%{opacity:0;transform:translate(var(--tx,10px),var(--ty,80px)) rotate(var(--rot,120deg)) scale(0.6);}
+}
+</style>
+</head>
+<body>
+<div id="viewport">
+
+  <div id="watercolor-bg"></div>
+  <div id="wash-layer"></div>
+  <div id="sun"></div>
+
+  <div class="cloud" id="cloud1"></div>
+  <div class="cloud" id="cloud2"></div>
+  <div class="cloud" id="cloud3"></div>
+
+  <canvas id="particle-canvas"></canvas>
+
+  <div id="ruoruo-wrap">
+    <img id="ruoruo-img" src="wakeup.png" alt="若若"
+         onerror="this.style.display='none';document.getElementById('ruoruo-emoji').style.display='block';">
+    <div id="ruoruo-emoji">🌸</div>
+  </div>
+
+  <button id="btn-go" onclick="showHarry()">起床囉 ☀️</button>
+
+  <!-- Harry 抱抱畫面 -->
+  <div id="harry-overlay">
+    <div id="harry-bg-img"
+         onerror="this.style.display='none';document.getElementById('harry-bg-emoji').style.display='flex';"></div>
+    <div id="harry-bg-emoji">🤗</div>
+    <div id="harry-mask"></div>
+    <div id="harry-card">
+      <div class="harry-card-from">Harry 說</div>
+      <div class="harry-card-text">若若加油 ❤️<br>好好享受自由的時光<br>安心的去挑戰吧～<br><br>不用怕<br>我會在你身後唷</div>
+    </div>
+  </div>
+
+  <div id="paper-texture"></div>
+</div>
+
+<script>
+// ── Line height fix ───────────────────────────────────────────────
+function fixHeight(){
+  const h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  document.body.style.height = h + 'px';
+  const vp = document.getElementById('viewport');
+  if(vp) vp.style.height = h + 'px';
+}
+fixHeight();
+window.addEventListener('resize', fixHeight);
+window.addEventListener('load', () => setTimeout(fixHeight, 200));
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize', fixHeight);
+  window.visualViewport.addEventListener('scroll', fixHeight);
+}
+
+// ── Canvas 光塵 ───────────────────────────────────────────────────
+const canvas = document.getElementById('particle-canvas');
+const ctx    = canvas.getContext('2d');
+let particles = [];
+let particleActive = false;
+
+function resizeCanvas(){
+  const vp = document.getElementById('viewport');
+  canvas.width  = vp.offsetWidth;
+  canvas.height = vp.offsetHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+function animateCanvas(){
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  particles = particles.filter(p => p.life > 0);
+  particles.forEach(p => {
+    p.y   -= p.vy;
+    p.x   += p.vx * Math.sin(p.age * 0.04);
+    p.age++;
+    p.life -= p.decay;
+    const a = Math.max(0, p.life * 0.75);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+    // 金色暖調，像陽光塵埃
+    const hue = 35 + Math.random()*20;
+    ctx.fillStyle = `hsla(${hue}, 85%, 70%, ${a})`;
+    ctx.fill();
+  });
+  requestAnimationFrame(animateCanvas);
+}
+animateCanvas();
+
+function spawnParticle(){
+  const w = canvas.width, h = canvas.height;
+  const cx = w * 0.5;
+  const sunY = h * 0.55;
+  particles.push({
+    x: cx + (Math.random()-0.5) * w * 0.4,
+    y: sunY + (Math.random()-0.5) * h * 0.1,
+    vx: (Math.random()-0.5) * 0.4,
+    vy: 0.3 + Math.random() * 0.7,
+    r:  0.8 + Math.random() * 2,
+    life: 0.5 + Math.random() * 0.5,
+    decay: 0.002 + Math.random() * 0.002,
+    age: 0,
+  });
+}
+
+// ── 日出動畫 ─────────────────────────────────────────────────────
+function runSunrise(){
+  const bg    = document.getElementById('watercolor-bg');
+  const wash  = document.getElementById('wash-layer');
+  const sun   = document.getElementById('sun');
+  const rr    = document.getElementById('ruoruo-wrap');
+  const btn   = document.getElementById('btn-go');
+  const clouds= document.querySelectorAll('.cloud');
+
+  // 台灣時間
+  const now = new Date(Date.now() + (8*60*60*1000 - new Date().getTimezoneOffset()*60000));
+  const h = now.getUTCHours(), m = now.getUTCMinutes();
+
+  // 光塵粒子
+  let pCount = 0;
+  const pInt = setInterval(()=>{
+    spawnParticle();
+    if(++pCount > 600) clearInterval(pInt);
+  }, 25);
+
+  // Phase 1 (1s): 雲朵淡入
+  setTimeout(()=>{
+    clouds.forEach(c=>{ c.style.opacity='1'; });
+  }, 1000);
+
+  // Phase 2 (2s): 太陽升起 + 背景加深成日出橙
+  setTimeout(()=>{
+    sun.style.opacity = '1';
+    sun.style.transform = 'translateX(-50%) translateY(0)';
+    sun.style.boxShadow = `
+      0 0 clamp(50px,12vw,70px) clamp(25px,6vw,35px) rgba(255,210,100,0.45),
+      0 0 clamp(100px,25vw,150px) clamp(50px,12vw,70px) rgba(255,170,60,0.2)`;
+
+    bg.style.transition = 'background 4s ease';
+    bg.style.background = `
+      radial-gradient(ellipse 100% 60% at 50% 100%, rgba(255,170,80,0.65) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 45% at 50% 60%,  rgba(255,220,100,0.35) 0%, transparent 55%),
+      linear-gradient(to top, #e8a050 0%, #f0c070 25%, #f8dca0 55%, #fdf0d5 100%)`;
+
+    wash.style.transition = 'opacity 4s ease, background 4s ease';
+    wash.style.background = `
+      radial-gradient(ellipse 55% 35% at 25% 70%, rgba(255,160,80,0.28) 0%, transparent 65%),
+      radial-gradient(ellipse 40% 28% at 75% 55%, rgba(220,180,240,0.14) 0%, transparent 65%),
+      radial-gradient(ellipse 65% 45% at 50% 90%, rgba(255,140,60,0.22) 0%, transparent 68%)`;
+  }, 2000);
+
+  // Phase 3 (5s): 若若出現
+  setTimeout(()=>{
+    rr.style.opacity = '1';
+  }, 5000);
+
+  // 太陽升起後直接顯示按鈕
+  setTimeout(()=>{
+    btn.classList.add('show');
+  }, 6000);
+}
+
+// ── Harry 出現 ───────────────────────────────────────────────────
+function showHarry(){
+  document.getElementById('btn-go').classList.remove('show');
+
+  // 檢查 harry.png 是否存在
+  const testImg = new Image();
+  testImg.onload = () => {
+    document.getElementById('harry-overlay').classList.add('show');
+    spawnPetals();
+  };
+  testImg.onerror = () => {
+    document.getElementById('harry-bg-img').style.display = 'none';
+    document.getElementById('harry-bg-emoji').style.display = 'flex';
+    document.getElementById('harry-overlay').classList.add('show');
+    spawnPetals();
+  };
+  testImg.src = 'comfort.png';
+}
+
+// ── 花瓣 ─────────────────────────────────────────────────────────
+function spawnPetals(){
+  const vp = document.getElementById('viewport');
+  const petals = ['🌸','✨','💛','🌼','💫'];
+  for(let i=0;i<20;i++){
+    setTimeout(()=>{
+      const el = document.createElement('div');
+      el.className = 'petal';
+      el.textContent = petals[Math.floor(Math.random()*petals.length)];
+      el.style.left = (5+Math.random()*90)+'%';
+      el.style.top  = (-5)+'%';
+      el.style.setProperty('--d',   (2+Math.random()*2.5)+'s');
+      el.style.setProperty('--dl',  (Math.random()*1.5)+'s');
+      el.style.setProperty('--tx',  (Math.random()-0.5)*60+'px');
+      el.style.setProperty('--ty',  (80+Math.random()*clamp(80,180))+'px');
+      el.style.setProperty('--rot', (Math.random()*240-120)+'deg');
+      vp.appendChild(el);
+      setTimeout(()=>el.remove(), 5000);
+    }, i*100);
+  }
+}
+function clamp(a,b){ return a+Math.random()*(b-a); }
+
+// ── 啟動 ─────────────────────────────────────────────────────────
+runSunrise();
+</script>
+</body>
+</html>
