@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>若若星空許願</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap');
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Zen Maru Gothic', "PingFang TC", sans-serif;
+            background: #0a0e1a;
+            min-height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* 星空畫布 */
+        #sky-canvas {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        /* 頂部標題 */
+        .top-ui {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            padding: 28px 24px 16px;
+            text-align: center;
+            z-index: 10;
+            pointer-events: none;
+            background: linear-gradient(to bottom, rgba(10,14,26,0.85) 0%, transparent 100%);
+        }
+        .title-main {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #e8d8f8;
+            letter-spacing: 2px;
+        }
+        .title-sub {
+            font-size: 0.82rem;
+            color: #8899cc;
+            margin-top: 5px;
+            animation: pulse 2.5s infinite;
+        }
+        @keyframes pulse { 0%,100%{opacity:.5} 50%{opacity:1} }
+
+        /* 底部月亮裝飾 */
+        .bottom-deco {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            height: 120px;
+            pointer-events: none;
+            z-index: 5;
+            background: linear-gradient(to top, rgba(10,14,26,0.95) 0%, transparent 100%);
+        }
+
+        /* 獎品 overlay */
+        .prize-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(5,8,20,0.75);
+            backdrop-filter: blur(8px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+        .prize-overlay.show { opacity: 1; pointer-events: auto; }
+
+        .prize-card {
+            width: 300px;
+            background: #0f1628;
+            border: 1px solid rgba(180,160,255,0.25);
+            border-radius: 28px;
+            box-shadow:
+                0 0 0 1px rgba(180,160,255,0.1),
+                0 20px 60px rgba(0,0,0,0.6),
+                inset 0 1px 0 rgba(255,255,255,0.05);
+            text-align: center;
+            transform: scale(0.7) translateY(50px);
+            opacity: 0;
+            transition: transform 0.55s cubic-bezier(0.175,0.885,0.32,1.275) 0.08s,
+                        opacity 0.4s ease 0.08s;
+            overflow: hidden;
+        }
+        .prize-overlay.show .prize-card { transform: scale(1) translateY(0); opacity: 1; }
+
+        .prize-card-top {
+            padding: 32px 20px 24px;
+            position: relative;
+            overflow: hidden;
+        }
+        /* 星光背景 */
+        .prize-card-top::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse at 30% 40%, rgba(120,80,255,0.2) 0%, transparent 60%),
+                radial-gradient(ellipse at 75% 60%, rgba(80,160,255,0.15) 0%, transparent 50%);
+        }
+
+        .prize-star-deco {
+            font-size: 1rem;
+            letter-spacing: 6px;
+            color: #a090e0;
+            display: block;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        .prize-card-emoji {
+            font-size: 3.2rem;
+            display: block;
+            margin-bottom: 10px;
+            position: relative;
+            animation: floatEmoji 3s ease-in-out infinite;
+        }
+        @keyframes floatEmoji {
+            0%,100% { transform: translateY(0); }
+            50%      { transform: translateY(-6px); }
+        }
+        .prize-card-tag {
+            font-size: 0.63rem;
+            color: #a090e0;
+            letter-spacing: 4px;
+            font-weight: 700;
+            position: relative;
+        }
+
+        .prize-card-body { padding: 22px 28px 8px; }
+        .prize-card-name {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #e8deff;
+            line-height: 1.85;
+            white-space: pre-line;
+        }
+
+        .prize-card-btn {
+            display: block;
+            margin: 18px auto 26px;
+            width: calc(100% - 56px);
+            background: linear-gradient(135deg, #7c4dff, #448aff);
+            color: #fff;
+            border: none;
+            padding: 13px;
+            font-family: 'Zen Maru Gothic', "PingFang TC", sans-serif;
+            font-size: 0.9rem;
+            font-weight: 700;
+            border-radius: 50px;
+            cursor: pointer;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 20px rgba(124,77,255,0.4);
+            transition: filter 0.2s, transform 0.15s;
+        }
+        .prize-card-btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
+
+        /* 流星尾跡粒子 */
+        .ptcl {
+            position: fixed;
+            pointer-events: none;
+            z-index: 200;
+            animation: fly var(--dur) ease-out forwards;
+            font-size: 0.8rem;
+        }
+        @keyframes fly {
+            0%   { transform: translate(0,0) scale(1); opacity: 1; }
+            100% { transform: translate(var(--sx),var(--sy)) scale(0); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="sky-canvas"></canvas>
+
+<div class="top-ui">
+    <div class="title-main">✦ 若若星空許願 ✦</div>
+    <div class="title-sub" id="top-sub">點一顆星星，許下今晚的願望</div>
+</div>
+
+<div class="bottom-deco"></div>
+
+<div class="prize-overlay" id="prize-overlay">
+    <div class="prize-card">
+        <div class="prize-card-top">
+            <span class="prize-star-deco">★ ★ ★</span>
+            <span class="prize-card-emoji" id="prize-emoji">🎁</span>
+            <div class="prize-card-tag">✦ 星願成真 · 今日獎勵 ✦</div>
+        </div>
+        <div class="prize-card-body">
+            <div class="prize-card-name" id="prize-name">...</div>
+        </div>
+        <button class="prize-card-btn" onclick="resetGame()">再許一個願 ✦</button>
+    </div>
+</div>
+
+<script>
+const prizes = [
+    { emoji:"🌷", name:"你已經很努力了\n不用對自己太苛刻" },
+    { emoji:"💪", name:"遇到困難不代表能力差\n只是正在學習而已" },
+    { emoji:"🌈", name:"主管的一次意見\n不等於對你的全部評價" },
+    { emoji:"🤝", name:"別急著猜測別人想法\n很多同事其實很喜歡你" },
+    { emoji:"✨", name:"犯錯是成長的證明\n不是失敗的證據" },
+    { emoji:"🫶", name:"如果今天很辛苦\n請記得為自己鼓掌" },
+    { emoji:"🎈", name:"工作表現不能定義你\n你本來就很值得被喜歡" },
+    { emoji:"🤗", name:"Harry 抱抱一個\n你真的已經做得很好了" },
+];
+
+const canvas  = document.getElementById('sky-canvas');
+const ctx     = canvas.getContext('2d');
+const topSub  = document.getElementById('top-sub');
+const prizeOverlay = document.getElementById('prize-overlay');
+const prizeEmoji   = document.getElementById('prize-emoji');
+const prizeName    = document.getElementById('prize-name');
+
+let W, H, animId;
+let stars = [];
+let shootingStar = null;
+let shooting = false;
+let done = false;
+
+/* ── 星星資料 ── */
+function makeStars() {
+    stars = [];
+    // 大星（可點擊）：12 顆，散佈畫面
+    for (let i = 0; i < 12; i++) {
+        stars.push({
+            x: 0.06 * W + Math.random() * 0.88 * W,
+            y: 0.12 * H + Math.random() * 0.65 * H,
+            r: 3.5 + Math.random() * 3,
+            brightness: 0.7 + Math.random() * 0.3,
+            twinkleSpeed: 0.02 + Math.random() * 0.03,
+            twinklePhase: Math.random() * Math.PI * 2,
+            clickable: true,
+            hovered: false,
+            pulseR: 0,
+        });
+    }
+    // 小背景星：150 顆
+    for (let i = 0; i < 150; i++) {
+        stars.push({
+            x: Math.random() * W,
+            y: Math.random() * H,
+            r: 0.5 + Math.random() * 1.5,
+            brightness: 0.3 + Math.random() * 0.5,
+            twinkleSpeed: 0.015 + Math.random() * 0.03,
+            twinklePhase: Math.random() * Math.PI * 2,
+            clickable: false,
+            hovered: false,
+        });
+    }
+}
+
+function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    makeStars();
+}
+window.addEventListener('resize', resize);
+resize();
+
+/* ── 繪製單顆星 ── */
+function drawStar(s, t) {
+    s.twinklePhase += s.twinkleSpeed;
+    const twinkle = s.brightness * (0.7 + 0.3 * Math.sin(s.twinklePhase));
+
+    ctx.save();
+    ctx.globalAlpha = twinkle;
+
+    if (s.clickable) {
+        // 可點擊星：十字光芒
+        const r = s.hovered ? s.r * 1.6 : s.r;
+        // 光暈
+        const grd = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, r * 5);
+        grd.addColorStop(0,   `rgba(200,180,255,${twinkle * 0.5})`);
+        grd.addColorStop(0.4, `rgba(160,140,255,${twinkle * 0.15})`);
+        grd.addColorStop(1,   'transparent');
+        ctx.fillStyle = grd;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, r * 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 星體
+        ctx.fillStyle = `rgba(230,220,255,${twinkle})`;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 十字光芒
+        ctx.strokeStyle = `rgba(220,210,255,${twinkle * 0.8})`;
+        ctx.lineWidth = 1;
+        const spike = r * 4;
+        ctx.beginPath();
+        ctx.moveTo(s.x - spike, s.y); ctx.lineTo(s.x + spike, s.y);
+        ctx.moveTo(s.x, s.y - spike); ctx.lineTo(s.x, s.y + spike);
+        ctx.stroke();
+
+        // hover 外圈脈衝
+        if (s.hovered) {
+            ctx.strokeStyle = `rgba(200,180,255,0.4)`;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, r * 2.8 + Math.sin(t * 0.1) * 3, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+    } else {
+        // 背景小星
+        ctx.fillStyle = `rgba(200,210,255,${twinkle})`;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    ctx.restore();
+}
+
+/* ── 流星 ── */
+function createShootingStar(fromX, fromY) {
+    const angle = Math.PI * 0.35 + (Math.random() - 0.5) * 0.3;
+    const speed = 18 + Math.random() * 8;
+    shootingStar = {
+        x: fromX, y: fromY,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        trail: [],
+        maxTrail: 28,
+        done: false,
+    };
+}
+
+function drawShootingStar() {
+    if (!shootingStar) return;
+    const s = shootingStar;
+
+    // 更新位置
+    s.trail.push({ x: s.x, y: s.y });
+    if (s.trail.length > s.maxTrail) s.trail.shift();
+    s.x += s.vx;
+    s.y += s.vy;
+    s.vy += 0.3; // 重力
+
+    // 繪製尾跡
+    for (let i = 0; i < s.trail.length; i++) {
+        const ratio = i / s.trail.length;
+        const alpha = ratio * 0.85;
+        const r     = ratio * 3.5;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        const grd = ctx.createRadialGradient(s.trail[i].x, s.trail[i].y, 0, s.trail[i].x, s.trail[i].y, r + 1);
+        grd.addColorStop(0,   `rgba(220,200,255,1)`);
+        grd.addColorStop(0.5, `rgba(160,130,255,0.6)`);
+        grd.addColorStop(1,   'transparent');
+        ctx.fillStyle = grd;
+        ctx.beginPath();
+        ctx.arc(s.trail[i].x, s.trail[i].y, r + 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    // 流星頭
+    ctx.save();
+    ctx.globalAlpha = 1;
+    const hgrd = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, 8);
+    hgrd.addColorStop(0,   'rgba(255,255,255,1)');
+    hgrd.addColorStop(0.4, 'rgba(200,180,255,0.8)');
+    hgrd.addColorStop(1,   'transparent');
+    ctx.fillStyle = hgrd;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // 掉出畫面 → 結束
+    if (s.y > H + 50 || s.x > W + 50 || s.x < -50) {
+        shootingStar = null;
+        setTimeout(showPrize, 300);
+    }
+}
+
+/* ── 月亮 ── */
+function drawMoon() {
+    const mx = W * 0.82, my = H * 0.14, mr = 38;
+    // 月暈
+    const mgrd = ctx.createRadialGradient(mx, my, mr * 0.6, mx, my, mr * 2.5);
+    mgrd.addColorStop(0,   'rgba(255,240,180,0.18)');
+    mgrd.addColorStop(1,   'transparent');
+    ctx.fillStyle = mgrd;
+    ctx.beginPath();
+    ctx.arc(mx, my, mr * 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 月亮本體
+    ctx.fillStyle = '#fef3c7';
+    ctx.beginPath();
+    ctx.arc(mx, my, mr, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 陰影（彎月效果）
+    ctx.fillStyle = '#0a0e1a';
+    ctx.beginPath();
+    ctx.arc(mx + mr * 0.38, my, mr * 0.88, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 月面細節
+    ctx.fillStyle = 'rgba(240,220,150,0.25)';
+    [[mx-12, my-8, 5],[mx-4, my+10, 3.5],[mx+6, my-14, 3]].forEach(([cx,cy,cr])=>{
+        ctx.beginPath(); ctx.arc(cx, cy, cr, 0, Math.PI*2); ctx.fill();
+    });
+}
+
+/* ── 銀河帶 ── */
+function drawMilkyWay() {
+    const grd = ctx.createLinearGradient(0, H*0.1, W, H*0.7);
+    grd.addColorStop(0,   'transparent');
+    grd.addColorStop(0.3, 'rgba(100,90,160,0.06)');
+    grd.addColorStop(0.5, 'rgba(120,110,180,0.1)');
+    grd.addColorStop(0.7, 'rgba(100,90,160,0.06)');
+    grd.addColorStop(1,   'transparent');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, W, H);
+}
+
+/* ── 主迴圈 ── */
+let frame = 0;
+function loop() {
+    frame++;
+    ctx.clearRect(0, 0, W, H);
+
+    // 夜空背景
+    const bg = ctx.createRadialGradient(W*0.4, H*0.3, 0, W*0.5, H*0.5, H);
+    bg.addColorStop(0,   '#131828');
+    bg.addColorStop(0.5, '#0d1220');
+    bg.addColorStop(1,   '#080c18');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    drawMilkyWay();
+    drawMoon();
+    stars.forEach(s => drawStar(s, frame));
+    if (shootingStar) drawShootingStar();
+
+    animId = requestAnimationFrame(loop);
+}
+loop();
+
+/* ── 互動：hover ── */
+canvas.addEventListener('mousemove', e => {
+    if (shooting || done) return;
+    const mx = e.clientX, my = e.clientY;
+    stars.forEach(s => {
+        if (!s.clickable) return;
+        const d = Math.hypot(s.x - mx, s.y - my);
+        s.hovered = d < s.r * 5 + 10;
+    });
+    canvas.style.cursor = stars.some(s=>s.clickable&&s.hovered) ? 'pointer' : 'default';
+});
+
+/* ── 互動：點擊 ── */
+function handleTap(cx, cy) {
+    if (shooting || done) return;
+    // 找最近的可點擊星
+    let closest = null, minD = Infinity;
+    stars.forEach(s => {
+        if (!s.clickable) return;
+        const d = Math.hypot(s.x - cx, s.y - cy);
+        if (d < minD) { minD = d; closest = s; }
+    });
+
+    // 點擊範圍內（寬鬆判定，手機友善）
+    if (closest && minD < closest.r * 6 + 24) {
+        shooting = true;
+        topSub.innerText = '⭐ 願望已送出，流星帶你實現...';
+        topSub.style.animation = 'none';
+
+        // 點擊閃光
+        tapFlash(closest.x, closest.y);
+
+        setTimeout(() => {
+            // 讓該星消失
+            closest.brightness = 0;
+            createShootingStar(closest.x, closest.y);
+        }, 300);
+    }
+}
+
+canvas.addEventListener('click', e => handleTap(e.clientX, e.clientY));
+canvas.addEventListener('touchend', e => {
+    e.preventDefault();
+    const t = e.changedTouches[0];
+    handleTap(t.clientX, t.clientY);
+}, { passive: false });
+
+/* ── 點擊閃光 ── */
+function tapFlash(x, y) {
+    ['✨','⭐','💫'].forEach((s, i) => {
+        setTimeout(() => {
+            const el = document.createElement('div');
+            el.className = 'ptcl'; el.innerText = s;
+            const angle = (Math.PI * 2 / 3) * i;
+            el.style.left = x + 'px'; el.style.top = y + 'px';
+            el.style.setProperty('--sx', Math.cos(angle)*40 + 'px');
+            el.style.setProperty('--sy', Math.sin(angle)*40 + 'px');
+            el.style.setProperty('--dur', '0.6s');
+            document.body.appendChild(el);
+            el.addEventListener('animationend', ()=>el.remove());
+        }, i * 80);
+    });
+}
+
+/* ── 顯示獎品 ── */
+function showPrize() {
+    done = true;
+    const p = prizes[Math.floor(Math.random() * prizes.length)];
+    prizeEmoji.innerText = p.emoji;
+    prizeName.innerText  = p.name;
+    prizeOverlay.classList.add('show');
+    sparkle();
+}
+
+function sparkle() {
+    ['✨','🌟','💜','💙','🌸','💫'].forEach((s,i) => {
+        for (let j=0; j<3; j++) setTimeout(()=>{
+            const el = document.createElement('div');
+            el.className='ptcl'; el.innerText=s;
+            el.style.left=(10+Math.random()*80)+'vw';
+            el.style.top=(10+Math.random()*70)+'vh';
+            el.style.setProperty('--sx',(Math.random()-.5)*90+'px');
+            el.style.setProperty('--sy',-(40+Math.random()*80)+'px');
+            el.style.setProperty('--dur','1s');
+            document.body.appendChild(el);
+            el.addEventListener('animationend',()=>el.remove());
+        },(i*3+j)*65);
+    });
+}
+
+/* ── 重置 ── */
+function resetGame() {
+    prizeOverlay.classList.remove('show');
+    shooting = false;
+    done = false;
+    shootingStar = null;
+    topSub.innerText = '點一顆星星，許下今晚的願望';
+    topSub.style.animation = '';
+    makeStars();
+}
+</script>
+</body>
+</html>
