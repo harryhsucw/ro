@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
+<title>若若老虎機</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;}
+html{height:100%;}
+body{
+  width:100%;height:100%;overflow:hidden;position:fixed;top:0;left:0;
+  font-family:'Zen Maru Gothic','PingFang TC','Apple Color Emoji',sans-serif;
+  background:linear-gradient(160deg,#12082a 0%,#200818 50%,#120808 100%);
+  display:flex;justify-content:center;align-items:center;
+  touch-action:none;
+}
+#viewport{
+  position:relative;width:100%;max-width:420px;height:100%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:clamp(8px,2.5vw,14px);
+  padding:clamp(12px,3vw,20px) clamp(14px,4vw,20px);
+  padding-top:max(clamp(12px,3vw,20px),env(safe-area-inset-top));
+  padding-bottom:max(clamp(12px,3vw,20px),env(safe-area-inset-bottom));
+}
+
+/* ── 標題 ── */
+.neon-title{
+  font-size:clamp(20px,5.5vw,26px);font-weight:700;color:#fff;
+  text-align:center;letter-spacing:0.12em;
+  text-shadow:0 0 10px #ff6090,0 0 24px #ff3060,0 0 48px #ff1040;
+  animation:neon-flicker 5s ease-in-out infinite;
+}
+@keyframes neon-flicker{0%,94%,100%{opacity:1;}95%{opacity:0.6;}97%{opacity:0.8;}98%{opacity:0.5;}99%{opacity:1;}}
+
+/* ── 目標條 ── */
+#goal-bar-wrap{
+  width:100%;background:rgba(0,0,0,0.35);
+  border:1px solid rgba(255,200,50,0.2);border-radius:99px;
+  padding:6px 12px;display:flex;align-items:center;gap:8px;
+}
+#goal-bar-track{flex:1;height:6px;background:rgba(255,255,255,0.1);border-radius:99px;overflow:hidden;}
+#goal-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#ffd040,#ffb020);transition:width 0.6s cubic-bezier(.34,1.56,.64,1);}
+#goal-label{font-size:clamp(10px,2.8vw,12px);color:rgba(255,200,50,0.8);white-space:nowrap;}
+
+/* ── 機身 ── */
+.machine-body{
+  background:linear-gradient(160deg,#1e1232,#150820);
+  border:2px solid rgba(255,100,150,0.35);border-radius:clamp(18px,5vw,26px);
+  padding:clamp(12px,3.5vw,18px) clamp(12px,3.5vw,18px);
+  box-shadow:0 0 30px rgba(255,60,100,0.2),0 0 60px rgba(255,60,100,0.08),inset 0 0 30px rgba(0,0,0,0.4);
+  width:100%;
+}
+
+/* ── 積分列 ── */
+.score-row{display:flex;justify-content:space-between;margin-bottom:clamp(8px,2.5vw,12px);gap:6px;}
+.score-box{
+  flex:1;background:rgba(0,0,0,0.5);border:1px solid rgba(255,200,50,0.25);
+  border-radius:8px;padding:clamp(4px,1.5vw,7px) clamp(6px,2vw,10px);text-align:center;
+}
+.score-label{font-size:clamp(8px,2.2vw,10px);color:rgba(255,200,50,0.65);letter-spacing:0.08em;}
+.score-val{font-size:clamp(14px,4vw,18px);font-weight:700;color:#ffd040;text-shadow:0 0 8px rgba(255,200,40,0.5);}
+
+/* ── 特殊事件橫幅 ── */
+#event-banner{
+  text-align:center;height:clamp(20px,5.5vw,26px);
+  font-size:clamp(11px,3vw,13px);font-weight:700;letter-spacing:0.1em;
+  opacity:0;transition:opacity 0.4s;
+  color:#ffd040;text-shadow:0 0 10px rgba(255,200,40,0.8);
+}
+#event-banner.show{opacity:1;}
+
+/* ── 捲軸視窗 ── */
+.reels-window{
+  background:#080310;border:2px solid rgba(255,100,150,0.45);
+  border-radius:clamp(10px,3vw,14px);padding:clamp(6px,2vw,10px);
+  display:flex;gap:clamp(5px,1.5vw,8px);margin-bottom:clamp(10px,3vw,14px);
+  box-shadow:inset 0 0 20px rgba(0,0,0,0.7),0 0 20px rgba(255,80,120,0.12);
+  position:relative;overflow:hidden;
+}
+.reels-window::after{
+  content:'';position:absolute;top:0;left:-40%;width:30%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.04),transparent);
+  animation:sweep 3.5s ease-in-out infinite;pointer-events:none;
+}
+@keyframes sweep{0%{left:-40%;}100%{left:140%;}}
+
+.reel{
+  flex:1;height:clamp(90px,25vw,115px);overflow:hidden;
+  border-radius:clamp(6px,2vw,9px);position:relative;
+  border:1px solid rgba(255,100,150,0.18);
+}
+.reel::before,.reel::after{content:'';position:absolute;left:0;right:0;z-index:10;pointer-events:none;}
+.reel::before{top:0;height:28%;background:linear-gradient(to bottom,rgba(8,3,16,0.9),transparent);}
+.reel::after{bottom:0;height:28%;background:linear-gradient(to top,rgba(8,3,16,0.9),transparent);}
+.reel-highlight{
+  position:absolute;top:50%;left:0;right:0;
+  height:clamp(34px,9.5vw,44px);transform:translateY(-50%);
+  border-top:1px solid rgba(255,200,50,0.3);border-bottom:1px solid rgba(255,200,50,0.3);
+  background:rgba(255,200,50,0.04);pointer-events:none;z-index:5;
+}
+.reel-strip{display:flex;flex-direction:column;align-items:center;will-change:transform;}
+.reel-item{
+  width:100%;height:clamp(34px,9.5vw,44px);
+  display:flex;align-items:center;justify-content:center;
+  font-size:clamp(22px,6.5vw,30px);flex-shrink:0;
+  transition:transform 0.15s;
+}
+/* 野符號高亮 */
+.reel-item.wild{
+  background:rgba(255,200,50,0.15);
+  text-shadow:0 0 12px rgba(255,200,50,0.9);
+}
+
+/* ── 拉霸按鈕 ── */
+.lever-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;}
+#lever-btn{
+  width:clamp(90px,28vw,120px);height:clamp(46px,13vw,58px);
+  border-radius:99px;border:none;
+  background:linear-gradient(135deg,#e0203a,#a01020);
+  color:white;font-family:inherit;
+  font-size:clamp(12px,3.5vw,14px);font-weight:700;letter-spacing:0.08em;
+  cursor:pointer;
+  box-shadow:0 6px 0 #6a0a14,0 8px 20px rgba(220,30,60,0.5),0 0 24px rgba(255,60,90,0.3);
+  transition:transform 0.08s,box-shadow 0.08s;
+  touch-action:none;
+}
+#lever-btn.pressing{transform:translateY(4px);box-shadow:0 2px 0 #6a0a14,0 4px 12px rgba(220,30,60,0.4);}
+#lever-btn:disabled{opacity:0.5;pointer-events:none;}
+.lever-hint{
+  font-size:clamp(10px,2.8vw,12px);color:rgba(255,160,180,0.65);
+  letter-spacing:0.08em;text-align:center;min-height:1.4em;transition:opacity 0.3s;
+}
+
+/* ── 結果區 ── */
+#result-wrap{
+  width:100%;min-height:clamp(56px,15vw,72px);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:4px;text-align:center;
+}
+#result-main{
+  font-size:clamp(14px,4vw,17px);font-weight:700;
+  color:rgba(255,220,180,0.9);letter-spacing:0.06em;line-height:1.4;
+  transition:opacity 0.3s;
+}
+#result-sub{font-size:clamp(11px,3vw,13px);color:rgba(255,160,130,0.7);}
+
+/* ── 免費旋轉標示 ── */
+#free-spin-badge{
+  display:none;
+  background:linear-gradient(135deg,#ffd040,#ffb020);
+  color:#1a0a00;border-radius:99px;
+  padding:4px 14px;font-size:clamp(11px,3vw,13px);font-weight:700;
+  letter-spacing:0.1em;
+  box-shadow:0 0 14px rgba(255,200,40,0.5);
+  animation:badge-pulse 1s ease-in-out infinite;
+}
+@keyframes badge-pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.05);}}
+
+/* ── 大獎 overlay ── */
+#big-win-overlay{
+  position:fixed;inset:0;z-index:200;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:rgba(0,0,0,0.75);
+  -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
+  opacity:0;pointer-events:none;
+  transition:opacity 0.4s;
+  gap:8px;
+}
+#big-win-overlay.show{opacity:1;pointer-events:auto;}
+.big-win-emoji{font-size:clamp(56px,16vw,72px);animation:win-pop 0.5s cubic-bezier(.34,1.56,.64,1) both;}
+@keyframes win-pop{from{transform:scale(0.3);opacity:0;}to{transform:scale(1);opacity:1;}}
+.big-win-text{
+  font-size:clamp(24px,7vw,32px);font-weight:700;color:#ffd040;
+  text-shadow:0 0 20px rgba(255,200,40,0.8),0 0 40px rgba(255,200,40,0.4);
+  letter-spacing:0.1em;text-align:center;
+}
+.big-win-sub{font-size:clamp(14px,4vw,16px);color:rgba(255,220,180,0.8);letter-spacing:0.08em;}
+.big-win-tap{font-size:clamp(11px,3vw,13px);color:rgba(255,255,255,0.45);margin-top:8px;}
+
+/* ── 彩蛋 overlay ── */
+#egg-overlay{
+  position:fixed;inset:0;z-index:200;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:rgba(20,5,40,0.88);
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+  opacity:0;pointer-events:none;transition:opacity 0.4s;
+  padding:24px;gap:12px;
+}
+#egg-overlay.show{opacity:1;pointer-events:auto;}
+.egg-emoji{font-size:clamp(48px,13vw,60px);}
+.egg-text{
+  font-size:clamp(15px,4.2vw,18px);font-weight:500;color:white;
+  text-align:center;line-height:1.8;letter-spacing:0.06em;
+  text-shadow:0 0 16px rgba(200,150,255,0.5);
+}
+.egg-close{
+  margin-top:8px;border:1.5px solid rgba(255,255,255,0.3);background:transparent;
+  color:rgba(255,255,255,0.7);border-radius:99px;
+  padding:10px 28px;font-family:inherit;font-size:clamp(12px,3.3vw,14px);
+  cursor:pointer;transition:background 0.2s;
+}
+.egg-close:active{background:rgba(255,255,255,0.1);}
+
+/* 粒子 */
+.conf{position:fixed;width:7px;height:7px;border-radius:2px;pointer-events:none;z-index:300;animation:cf var(--d,1.5s) ease-out var(--dl,0s) forwards;}
+@keyframes cf{0%{opacity:1;transform:translate(0,0) rotate(0);}100%{opacity:0;transform:translate(var(--tx,0px),var(--ty,200px)) rotate(var(--rot,360deg));}}
+.sparkle-p{position:fixed;pointer-events:none;z-index:300;animation:sp var(--d,1.5s) ease-out forwards;}
+@keyframes sp{0%{opacity:1;transform:translate(0,0) scale(1);}100%{opacity:0;transform:translate(var(--tx,0),var(--ty,-80px)) scale(0.3);}}
+
+#jackpot-flash{position:fixed;inset:0;pointer-events:none;z-index:150;opacity:0;background:radial-gradient(ellipse 80% 60% at 50% 50%,rgba(255,220,50,0.4),transparent 70%);}
+#jackpot-flash.show{animation:jf 0.5s ease forwards;}
+@keyframes jf{0%{opacity:0;}30%{opacity:1;}100%{opacity:0;}}
+</style>
+</head>
+<body>
+<div id="viewport">
+  <div class="neon-title">🎰 若若老虎機</div>
+
+  <!-- 目標進度條 -->
+  <div id="goal-bar-wrap">
+    <div id="goal-bar-track"><div id="goal-bar-fill" style="width:0%"></div></div>
+    <div id="goal-label">目標 0 / 200</div>
+  </div>
+
+  <div class="machine-body">
+    <div class="score-row">
+      <div class="score-box"><div class="score-label">積分</div><div class="score-val" id="score-val">100</div></div>
+      <div class="score-box"><div class="score-label">連勝</div><div class="score-val" id="streak-val">0 🔥</div></div>
+      <div class="score-box"><div class="score-label">免費旋轉</div><div class="score-val" id="free-val">0</div></div>
+    </div>
+
+    <div id="event-banner">⚡ 連擊模式！</div>
+
+    <div class="reels-window">
+      <div class="reel" id="reel-0"><div class="reel-highlight"></div><div class="reel-strip" id="strip-0"></div></div>
+      <div class="reel" id="reel-1"><div class="reel-highlight"></div><div class="reel-strip" id="strip-1"></div></div>
+      <div class="reel" id="reel-2"><div class="reel-highlight"></div><div class="reel-strip" id="strip-2"></div></div>
+    </div>
+
+    <div class="lever-wrap">
+      <div id="free-spin-badge">免費旋轉！</div>
+      <button id="lever-btn">SPIN</button>
+      <div class="lever-hint" id="lever-hint">按住蓄力，放開旋轉！</div>
+    </div>
+  </div>
+
+  <div id="result-wrap">
+    <div id="result-main">試試手氣吧 🍀</div>
+    <div id="result-sub"></div>
+  </div>
+</div>
+
+<!-- 大獎 overlay -->
+<div id="big-win-overlay" onclick="closeBigWin()">
+  <div class="big-win-emoji" id="bw-emoji">🎊</div>
+  <div class="big-win-text" id="bw-text">大獎！</div>
+  <div class="big-win-sub" id="bw-sub">+500 積分</div>
+  <div class="big-win-tap">點擊繼續</div>
+</div>
+
+<!-- 彩蛋 overlay -->
+<div id="egg-overlay">
+  <div class="egg-emoji" id="egg-emoji">🌸</div>
+  <div class="egg-text" id="egg-text">彩蛋訊息</div>
+  <button class="egg-close" onclick="closeEgg()">好的 💙</button>
+</div>
+
+<div id="goal-complete-overlay" onclick="restartGame()" style="
+  position:fixed;inset:0;z-index:300;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:rgba(10,5,20,0.92);
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+  opacity:0;pointer-events:none;transition:opacity 0.6s;
+  gap:12px;padding:24px;text-align:center;
+">
+  <div style="font-size:clamp(56px,15vw,70px);animation:win-pop 0.5s cubic-bezier(.34,1.56,.64,1) both;">🏆</div>
+  <div style="font-size:clamp(22px,6vw,28px);font-weight:700;color:#ffd040;letter-spacing:0.1em;text-shadow:0 0 20px rgba(255,200,40,0.8);">目標達成！</div>
+  <div style="font-size:clamp(14px,4vw,16px);color:rgba(255,220,180,0.85);line-height:1.7;letter-spacing:0.06em;">若若今天的手氣超好<br>這是宇宙認證的 💛</div>
+  <div style="margin-top:8px;font-size:clamp(11px,3vw,13px);color:rgba(255,255,255,0.4);">點擊重新開始</div>
+</div>
+
+<div id="jackpot-flash"
+></div>
+
+<script>
+function fixHeight(){
+  const h=window.visualViewport?window.visualViewport.height:window.innerHeight;
+  document.body.style.height=h+'px';
+  document.getElementById('viewport').style.height=h+'px';
+}
+fixHeight();
+window.addEventListener('resize',fixHeight);
+window.addEventListener('load',()=>setTimeout(fixHeight,200));
+if(window.visualViewport){window.visualViewport.addEventListener('resize',fixHeight);window.visualViewport.addEventListener('scroll',fixHeight);}
+
+// ── 符號 ─────────────────────────────────────────────────────────
+const SYMBOLS=[
+  {emoji:'🍒',name:'櫻桃', w:22,pay:2},
+  {emoji:'🍋',name:'檸檬', w:18,pay:3},
+  {emoji:'🍊',name:'柳橙', w:16,pay:4},
+  {emoji:'🍇',name:'葡萄', w:14,pay:6},
+  {emoji:'⭐',name:'星星', w:12,pay:10},
+  {emoji:'7️⃣',name:'七七', w:5, pay:25},
+  {emoji:'💎',name:'鑽石', w:3, pay:60},
+];
+// 野符號（替代任何符號）
+const WILD='🃏';
+const WILD_CHANCE=0.14; // 6% 機率出現野符號
+
+function weightedRandom(){
+  const total=SYMBOLS.reduce((s,x)=>s+x.w,0);
+  let r=Math.random()*total;
+  for(const s of SYMBOLS){r-=s.w;if(r<=0)return s;}
+  return SYMBOLS[0];
+}
+
+// ── 若若專屬彩蛋 ─────────────────────────────────────────────────
+const EGGS=[
+  {trigger:[`🍒`,`🍒`,`🍒`], emoji:'🍒', msg:'三顆櫻桃！\n若若今天甜甜的\n跟你本人一樣'},
+  {trigger:[`💎`,`💎`,`💎`], emoji:'💎', msg:'三顆鑽石！！！\n這是宇宙在說\n若若你本來就是最珍貴的'},
+  {trigger:[`7️⃣`,`7️⃣`,`7️⃣`], emoji:'7️⃣', msg:'777！\nHarry 認證\n若若今天的運氣可以借我一點嗎'},
+  {trigger:[`⭐`,`7️⃣`,`💎`], emoji:'🌟', msg:'神秘組合出現！\n這個組合的意思是：\n若若今天特別閃耀'},
+  {trigger:[`🍊`,`🍊`,`🍊`], emoji:'🍊', msg:'三顆柳橙！\n今天的若若\n維他命C爆表，健康又可愛'},
+  {trigger:[`⭐`,`⭐`,`⭐`], emoji:'⭐', msg:'三顆星星！\n若若你知道嗎\n你就是我天空裡最亮的那顆'},
+];
+
+function checkEgg(results){
+  const emojis=results.map(r=>r===WILD?WILD:r.emoji);
+  for(const egg of EGGS){
+    if(egg.trigger.every((t,i)=>emojis[i]===t||emojis[i]===WILD)){
+      return egg;
+    }
+  }
+  return null;
+}
+
+// ── 捲軸建立 ─────────────────────────────────────────────────────
+const STRIP_LEN=28;
+function buildStrip(id){
+  const strip=document.getElementById(`strip-${id}`);
+  strip.innerHTML='';
+  for(let i=0;i<STRIP_LEN;i++){
+    const el=document.createElement('div');
+    el.className='reel-item';
+    const isWild=Math.random()<WILD_CHANCE;
+    el.textContent=isWild?WILD:weightedRandom().emoji;
+    if(isWild) el.classList.add('wild');
+    strip.appendChild(el);
+  }
+}
+[0,1,2].forEach(i=>buildStrip(i));
+
+// ── 遊戲狀態 ─────────────────────────────────────────────────────
+let score=100, streak=0, freeSpin=0;
+let goalTarget=100, goalProgress=0;
+let phase='idle';
+let reelControllers=[null,null,null];
+let results=[null,null,null];
+let comboMode=false;
+const BET=10;
+
+function updateUI(){
+  document.getElementById('score-val').textContent=score;
+  document.getElementById('streak-val').textContent=streak+(streak>=3?' 🔥':'');
+  document.getElementById('free-val').textContent=freeSpin;
+  const pct=Math.min(goalProgress/goalTarget*100,100);
+  document.getElementById('goal-bar-fill').style.width=pct+'%';
+  document.getElementById('goal-label').textContent=`目標 ${goalProgress} / ${goalTarget}`;
+  const badge=document.getElementById('free-spin-badge');
+  badge.style.display=freeSpin>0?'block':'none';
+}
+
+// ── 捲軸動畫 ─────────────────────────────────────────────────────
+function getItemH(){return document.querySelector('.reel-item')?.offsetHeight||38;}
+
+function spinReel(reelIdx,speed){
+  const strip=document.getElementById(`strip-${reelIdx}`);
+  const items=strip.querySelectorAll('.reel-item');
+  const itemH=getItemH();
+  const totalH=itemH*items.length;
+  let pos=0,currentSpeed=speed,decelerating=false,stopped=false;
+  let targetSym=null;
+
+  function tick(){
+    if(stopped)return;
+    pos+=currentSpeed;
+    if(pos>=totalH)pos-=totalH;
+    strip.style.transform=`translateY(-${pos}px)`;
+    if(decelerating){
+      currentSpeed*=0.91;
+      if(currentSpeed<0.5){
+        // 對齊中間格
+        const centerRow=Math.round((pos+itemH*1.5)/itemH)%items.length;
+        if(targetSym){
+          items[centerRow].textContent=targetSym===WILD?WILD:targetSym.emoji;
+          items[centerRow].classList.toggle('wild',targetSym===WILD);
+        }
+        const snapPos=((centerRow-1.5)*itemH%totalH+totalH)%totalH;
+        strip.style.transform=`translateY(-${snapPos}px)`;
+        stopped=true;
+        return;
+      }
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+  return {
+    decelerate(sym){targetSym=sym;decelerating=true;}
+  };
+}
+
+// ── 判斷中獎 ─────────────────────────────────────────────────────
+const WIN_MSG={
+  jackpot:['💎💎💎 傳說大獎！！','若若今天是宇宙的寵兒！'],
+  triple7:['777！天選之人！','7️⃣7️⃣7️⃣ 今天凡事順利！'],
+  tripleS:['⭐⭐⭐ 三星連線！','閃閃發光的若若！'],
+  triple: ['三連！運氣不錯！','今天的若若很有氣場！'],
+  two:    ['兩個相同，差一點！','再來！感覺快中了！'],
+  none:   ['差一點點！','繼續轉，手氣要來了！'],
+};
+function pick(arr){return arr[Math.floor(Math.random()*arr.length)];}
+
+function judge(res){
+  // 野符號可替代任何符號
+  const emojis=res.map(r=>r===WILD?null:r?.emoji);
+  const nonWild=emojis.filter(e=>e!==null);
+  // 全是野符號
+  if(nonWild.length===0) return {type:'jackpot',mult:100};
+  // 有野符號時用出現最多的符號補
+  const freq={};
+  nonWild.forEach(e=>{freq[e]=(freq[e]||0)+1;});
+  const dominant=Object.entries(freq).sort((a,b)=>b[1]-a[1])[0][0];
+  const effective=emojis.map(e=>e===null?dominant:e);
+
+  if(effective[0]===effective[1]&&effective[1]===effective[2]){
+    const sym=SYMBOLS.find(s=>s.emoji===effective[0]);
+    if(!sym) return {type:'triple',mult:8};
+    if(sym.emoji==='💎') return {type:'jackpot',mult:sym.pay*3};
+    if(sym.emoji==='7️⃣') return {type:'triple7',mult:sym.pay*2};
+    if(sym.emoji==='⭐') return {type:'tripleS',mult:sym.pay};
+    return {type:'triple',mult:sym.pay};
+  }
+  if(effective[0]===effective[1]||effective[1]===effective[2]||effective[0]===effective[2])
+    return {type:'two',mult:1};
+  return {type:'none',mult:0};
+}
+
+// ── 顯示結果 ─────────────────────────────────────────────────────
+function showResult(verdict,res){
+  const isWin=verdict.mult>0;
+  const isFree=freeSpin>0;
+  const cost=isFree?0:BET;
+
+  let gain=0;
+  if(isWin){
+    gain=BET*verdict.mult*(comboMode?2:1);
+    score+=gain;
+    streak++;
+    goalProgress=Math.min(goalProgress+gain,goalTarget);
+    // 連勝3次給免費旋轉
+    if(streak>0&&streak%3===0){
+      freeSpin+=1;
+      showEvent('🎁 連勝獎勵！獲得免費旋轉 x1');
+    }
+  } else {
+    score=Math.max(0,score-cost);
+    streak=0;
+    comboMode=false;
+  }
+  if(score<BET&&freeSpin===0){score+=60;showEvent('🎰 補充積分 +60');}
+
+  // 連擊模式（連勝5次啟動）
+  if(streak>=5&&!comboMode){
+    comboMode=true;
+    showEvent('⚡ 連擊模式！獎金雙倍！');
+  }
+
+  // 目標達成 → 結束遊戲
+  if(goalProgress>=goalTarget){
+    goalProgress=goalTarget;
+    updateUI();
+    setTimeout(showGoalComplete, 800);
+    return;
+  }
+
+  updateUI();
+
+  const mainEl=document.getElementById('result-main');
+  const subEl=document.getElementById('result-sub');
+  mainEl.textContent=pick(WIN_MSG[verdict.type]);
+
+  if(isWin){
+    subEl.textContent=`+${gain} 積分${comboMode?' ⚡雙倍':''} ${streak>1?'連勝 '+streak+' 🔥':''}`;
+    if(verdict.type==='jackpot'||verdict.type==='triple7'){
+      triggerBigWin(verdict,gain);
+    } else {
+      spawnConf(verdict.type==='triple'?20:8);
+    }
+  } else {
+    subEl.textContent=isFree?'免費旋轉':`-${cost} 積分`;
+  }
+
+  // 彩蛋檢查
+  const egg=checkEgg(res);
+  if(egg) setTimeout(()=>showEgg(egg),1200);
+}
+
+// ── 特殊事件橫幅 ─────────────────────────────────────────────────
+let eventTimer=null;
+function showEvent(msg){
+  const el=document.getElementById('event-banner');
+  el.textContent=msg;
+  el.classList.add('show');
+  clearTimeout(eventTimer);
+  eventTimer=setTimeout(()=>el.classList.remove('show'),3000);
+}
+
+// ── 大獎 overlay ─────────────────────────────────────────────────
+function triggerBigWin(verdict,gain){
+  document.getElementById('bw-emoji').textContent=verdict.type==='jackpot'?'💎':'7️⃣';
+  document.getElementById('bw-text').textContent=verdict.type==='jackpot'?'💎 傳說大獎 💎':'🎉 777 大獎 🎉';
+  document.getElementById('bw-sub').textContent=`+${gain} 積分`;
+  document.getElementById('big-win-overlay').classList.add('show');
+  const flash=document.getElementById('jackpot-flash');
+  flash.classList.remove('show');void flash.offsetWidth;flash.classList.add('show');
+  spawnConf(50);
+}
+function closeBigWin(){document.getElementById('big-win-overlay').classList.remove('show');}
+
+// ── 彩蛋 ─────────────────────────────────────────────────────────
+function showEgg(egg){
+  document.getElementById('egg-emoji').textContent=egg.emoji;
+  document.getElementById('egg-text').innerHTML=egg.msg.replace(/\n/g,'<br>');
+  document.getElementById('egg-overlay').classList.add('show');
+}
+function closeEgg(){document.getElementById('egg-overlay').classList.remove('show');}
+
+// ── 按住 / 放開 ───────────────────────────────────────────────────
+const btn=document.getElementById('lever-btn');
+const hint=document.getElementById('lever-hint');
+let pressStart=0;
+
+function onPress(){
+  if(phase!=='idle')return;
+  phase='pressing';
+  pressStart=Date.now();
+  btn.classList.add('pressing');
+  hint.textContent='蓄力中⋯⋯';
+  // 開始滾動
+  results=[null,null,null];
+  const speeds=[17,19,21];
+  reelControllers=[0,1,2].map(i=>spinReel(i,speeds[i]));
+  phase='spinning';
+}
+
+function onRelease(){
+  if(phase!=='spinning')return;
+  phase='stopping';
+  btn.classList.remove('pressing');
+  hint.textContent='停！';
+
+  // 消耗免費旋轉
+  const isFree=freeSpin>0;
+  if(isFree) freeSpin--;
+
+  // 決定最終符號
+  [0,1,2].forEach((i,idx)=>{
+    let sym;
+    if(Math.random()<WILD_CHANCE){sym=WILD;}
+    else{sym=weightedRandom();}
+    results[i]=sym;
+    setTimeout(()=>reelControllers[i]?.decelerate(sym),idx*380);
+  });
+
+  setTimeout(()=>{
+    const verdict=judge(results);
+    showResult(verdict,results);
+    hint.textContent=freeSpin>0?'免費旋轉！再來一把！':'再來一把？';
+    setTimeout(()=>{phase='idle';},600);
+  },380*2+1600);
+}
+
+btn.addEventListener('mousedown',onPress);
+btn.addEventListener('touchstart',e=>{e.preventDefault();onPress();},{passive:false});
+btn.addEventListener('mouseup',onRelease);
+btn.addEventListener('touchend',e=>{e.preventDefault();onRelease();},{passive:false});
+window.addEventListener('mouseup',()=>{if(phase==='spinning')onRelease();});
+
+// ── 粒子 ─────────────────────────────────────────────────────────
+const CONF_COLORS=['#ff6090','#ffd040','#60d0ff','#a060ff','#40e080','#ff9040'];
+function spawnConf(n){
+  for(let i=0;i<n;i++){
+    setTimeout(()=>{
+      const el=document.createElement('div');
+      el.className='conf';
+      el.style.background=CONF_COLORS[Math.floor(Math.random()*CONF_COLORS.length)];
+      el.style.left=(5+Math.random()*90)+'vw';
+      el.style.top=(5+Math.random()*50)+'vh';
+      el.style.setProperty('--d',(1+Math.random()*1.5)+'s');
+      el.style.setProperty('--dl',(Math.random()*0.4)+'s');
+      el.style.setProperty('--tx',(Math.random()-0.5)*120+'px');
+      el.style.setProperty('--ty',(80+Math.random()*180)+'px');
+      el.style.setProperty('--rot',(Math.random()*720-360)+'deg');
+      document.body.appendChild(el);
+      setTimeout(()=>el.remove(),3000);
+    },i*50);
+  }
+}
+
+updateUI();
+
+function showGoalComplete(){
+  spawnConf(40);
+  const el=document.getElementById('goal-complete-overlay');
+  el.style.opacity='1';
+  el.style.pointerEvents='auto';
+}
+
+function restartGame(){
+  score=100;streak=0;freeSpin=0;goalProgress=0;comboMode=false;
+  const el=document.getElementById('goal-complete-overlay');
+  el.style.opacity='0';
+  el.style.pointerEvents='none';
+  document.getElementById('result-main').textContent='試試手氣吧 🍀';
+  document.getElementById('result-sub').textContent='';
+  updateUI();
+}
+</script>
+</body>
+</html>
