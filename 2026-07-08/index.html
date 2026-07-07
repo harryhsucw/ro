@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
+<title>若若誇誇團</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;}
+
+html{height:100%;}
+body{
+  width:100%;height:100%;
+  overflow:hidden;position:fixed;top:0;left:0;
+  font-family:'Zen Maru Gothic','PingFang TC','Apple Color Emoji',sans-serif;
+  background:#fdf0e6;
+  display:flex;justify-content:center;
+  touch-action:none;
+}
+
+#viewport{
+  position:relative;
+  width:100%;max-width:420px;height:100%;
+  overflow:hidden;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:flex-end;
+  background:#fdf0e6;
+}
+
+/* ── 觀眾圖片 ── */
+#audience-wrap{
+  position:absolute;
+  bottom:0;left:0;right:0;
+  z-index:1;
+  height:58%;
+}
+#crowd-standing,#crowd-cheering{
+  position:absolute;
+  bottom:0;left:0;width:100%;height:100%;
+  object-fit:cover;object-position:center bottom;
+  mix-blend-mode:multiply;
+  transition:opacity 0.6s ease;
+}
+#crowd-standing{opacity:1;}
+#crowd-cheering{opacity:0;}
+
+/* ── 若若 ── */
+#ruoruo-wrap{
+  position:absolute;
+  bottom:50%;
+  left:50%;transform:translateX(-50%);
+  z-index:2;
+  display:flex;flex-direction:column;align-items:center;
+}
+#ruoruo-char{
+  position:relative;
+  filter:drop-shadow(0 4px 16px rgba(0,0,0,0.12));
+}
+#img-back,#img-front{
+  width:clamp(160px,42vw,200px);
+  object-fit:contain;display:block;
+  mix-blend-mode:multiply;
+  position:absolute;top:0;left:50%;transform:translateX(-50%);
+  transition:opacity 0.5s ease 0.2s;
+}
+#img-back {opacity:1;}
+#img-front{opacity:0;}
+.char-spacer{
+  width:clamp(160px,42vw,200px);
+  height:clamp(165px,45vw,215px);
+}
+
+/* ── 讚美彈幕 ── */
+#cheer-layer{
+  position:absolute;inset:0;z-index:5;
+  pointer-events:none;overflow:hidden;
+}
+.cheer-bubble{
+  position:absolute;
+  background:white;
+  border-radius:clamp(10px,3vw,14px);
+  padding:clamp(7px,2vw,10px) clamp(10px,3vw,14px);
+  font-size:clamp(13px,3.6vw,15px);
+  font-weight:700;color:#5a4a3a;
+  box-shadow:0 3px 16px rgba(0,0,0,0.13);
+  opacity:0;
+  white-space:nowrap;
+  pointer-events:none;
+}
+.cheer-bubble.pop{
+  animation:bubble-in 0.4s cubic-bezier(.34,1.56,.64,1) forwards;
+}
+.cheer-bubble.fade{
+  animation:bubble-out 0.4s ease forwards;
+}
+@keyframes bubble-in{
+  from{opacity:0;transform:translateY(10px) scale(0.85);}
+  to  {opacity:1;transform:translateY(0) scale(1);}
+}
+@keyframes bubble-out{
+  from{opacity:1;transform:scale(1);}
+  to  {opacity:0;transform:scale(0.9);}
+}
+
+/* ── 五彩紙屑 ── */
+.confetti{
+  position:fixed;pointer-events:none;z-index:10;
+  border-radius:2px;
+  animation:cf-fall var(--d,2s) ease-out var(--dl,0s) forwards;
+}
+@keyframes cf-fall{
+  0%  {opacity:1;transform:translate(0,0) rotate(0deg);}
+  100%{opacity:0;transform:translate(var(--tx,0px),var(--ty,300px)) rotate(var(--rot,360deg));}
+}
+
+/* ── 按鈕 ── */
+#btn-area{
+  position:relative;z-index:6;
+  display:flex;flex-direction:column;align-items:center;
+  padding-bottom:max(clamp(28px,8vh,48px), env(safe-area-inset-bottom, 28px));
+  gap:8px;
+}
+
+#btn-turn{
+  border:none;
+  background:linear-gradient(135deg,#d4a882,#c9956f);
+  color:white;
+  border-radius:99px;
+  padding:clamp(14px,4vw,17px) clamp(40px,11vw,56px);
+  font-family:inherit;font-size:clamp(15px,4.2vw,17px);font-weight:700;
+  letter-spacing:0.1em;cursor:pointer;
+  box-shadow:0 4px 16px rgba(212,168,130,0.45);
+  transition:background 0.2s, transform 0.1s, box-shadow 0.2s;
+  touch-action:none;
+  -webkit-tap-highlight-color:transparent;
+}
+#btn-turn.active{
+  transform:scale(0.96);
+  box-shadow:0 2px 8px rgba(212,168,130,0.3);
+}
+
+.btn-hint{
+  font-size:clamp(10px,2.8vw,12px);
+  color:rgba(90,74,58,0.55);
+  letter-spacing:0.1em;
+}
+</style>
+</head>
+<body>
+<div id="viewport">
+
+  <!-- 觀眾 -->
+  <div id="audience-wrap">
+    <img id="crowd-standing" src="crowd_standing.png" alt="觀眾">
+    <img id="crowd-cheering" src="crowd_cheering.png" alt="觀眾歡呼">
+  </div>
+
+  <!-- 若若 -->
+  <div id="ruoruo-wrap">
+    <div id="ruoruo-char">
+      <img id="img-back"  src="back.png"  alt="若若背面">
+      <img id="img-front" src="front.png" alt="若若正面">
+      <div class="char-spacer"></div>
+    </div>
+  </div>
+
+  <!-- 讚美彈幕層 -->
+  <div id="cheer-layer"></div>
+
+  <!-- 按鈕 -->
+  <div id="btn-area">
+    <button id="btn-turn">轉身 ✨</button>
+    <div class="btn-hint">長按轉身，放開恢復</div>
+  </div>
+
+</div>
+
+<script>
+// ── Line height fix ───────────────────────────────────────────────
+function fixHeight(){
+  const h=window.visualViewport?window.visualViewport.height:window.innerHeight;
+  document.body.style.height=h+'px';
+  document.getElementById('viewport').style.height=h+'px';
+}
+fixHeight();
+window.addEventListener('resize',fixHeight);
+window.addEventListener('load',()=>setTimeout(fixHeight,200));
+if(window.visualViewport){window.visualViewport.addEventListener('resize',fixHeight);window.visualViewport.addEventListener('scroll',fixHeight);}
+
+// ── 五組固定讚美 ─────────────────────────────────────────────────
+const CHEER_SETS = [
+  ['你超棒的！','根本仙女！','太厲害了！','好美哦！','加油！','你最棒！'],
+  ['哇！好可愛！','你很棒唷！','完全無敵！','快成功了！','超讚的！','好崇拜你！'],
+  ['太美了吧！','你做到了！','閃閃發光！','支持你！','好厲害！','繼續加油！'],
+  ['哇哦哦哦！','你是最棒的！','不敢相信！','太強了！','愛你！','快到了！'],
+  ['仙女下凡！','你好優秀！','超級無敵！','我好驕傲！','加加油！','你可以的！'],
+];
+
+// 泡泡位置
+const POSITIONS=[
+  {left:'3%',   top:'42%'},
+  {left:'55%',  top:'38%'},
+  {left:'4%',   top:'54%'},
+  {left:'54%',  top:'52%'},
+  {left:'3%',   top:'66%'},
+  {left:'52%',  top:'64%'},
+];
+
+let setIdx=0;
+let activeBubbles=[];
+let confInterv=null;
+let isOn=false;
+
+// ── 長按開始 ─────────────────────────────────────────────────────
+function onPressStart(){
+  if(isOn)return;
+  isOn=true;
+  const btn=document.getElementById('btn-turn');
+  btn.classList.add('active');
+
+  // 若若轉身
+  document.getElementById('img-back').style.opacity='0';
+  document.getElementById('img-front').style.opacity='1';
+
+  // 觀眾歡呼
+  setTimeout(()=>{
+    document.getElementById('crowd-standing').style.opacity='0';
+    document.getElementById('crowd-cheering').style.opacity='1';
+  },300);
+
+  // 五彩紙屑
+  setTimeout(()=>spawnConfetti(35),400);
+
+  // 讚美彈幕
+  setTimeout(()=>showCheers(),500);
+}
+
+// ── 放開恢復 ─────────────────────────────────────────────────────
+function onPressEnd(){
+  if(!isOn)return;
+  isOn=false;
+  const btn=document.getElementById('btn-turn');
+  btn.classList.remove('active');
+
+  // 若若轉回
+  document.getElementById('img-back').style.opacity='1';
+  document.getElementById('img-front').style.opacity='0';
+
+  // 觀眾恢復
+  document.getElementById('crowd-standing').style.opacity='1';
+  document.getElementById('crowd-cheering').style.opacity='0';
+
+  // 收起泡泡
+  clearInterval(confInterv);
+  activeBubbles.forEach(el=>{
+    el.classList.remove('pop');
+    el.classList.add('fade');
+    setTimeout(()=>el.remove(),400);
+  });
+  activeBubbles=[];
+
+  // 下一組
+  setIdx=(setIdx+1)%CHEER_SETS.length;
+}
+
+// ── 顯示讚美 ─────────────────────────────────────────────────────
+function showCheers(){
+  if(!isOn)return;
+  const cheers=CHEER_SETS[setIdx];
+  const layer=document.getElementById('cheer-layer');
+
+  cheers.forEach((text,i)=>{
+    setTimeout(()=>{
+      if(!isOn)return;
+      const el=document.createElement('div');
+      el.className='cheer-bubble';
+      el.textContent=text;
+      const pos=POSITIONS[i%POSITIONS.length];
+      el.style.left=pos.left;
+      el.style.top=pos.top;
+      layer.appendChild(el);
+      activeBubbles.push(el);
+      // 觸發動畫
+      requestAnimationFrame(()=>{
+        requestAnimationFrame(()=>el.classList.add('pop'));
+      });
+    },i*200);
+  });
+}
+
+// ── 五彩紙屑 ─────────────────────────────────────────────────────
+const COLORS=['#ff6090','#ffd040','#60c8ff','#a060ff','#40e080','#ff9040','#ff60d0'];
+function spawnConfetti(n){
+  for(let i=0;i<n;i++){
+    setTimeout(()=>{
+      if(!isOn)return;
+      const el=document.createElement('div');
+      el.className='confetti';
+      el.style.background=COLORS[Math.floor(Math.random()*COLORS.length)];
+      el.style.width=(5+Math.random()*6)+'px';
+      el.style.height=(5+Math.random()*6)+'px';
+      el.style.left=(Math.random()*100)+'vw';
+      el.style.top='-10px';
+      el.style.setProperty('--d',(1.5+Math.random()*2)+'s');
+      el.style.setProperty('--dl','0s');
+      el.style.setProperty('--tx',(Math.random()-0.5)*80+'px');
+      el.style.setProperty('--ty',(150+Math.random()*250)+'px');
+      el.style.setProperty('--rot',(Math.random()*720-360)+'deg');
+      document.body.appendChild(el);
+      setTimeout(()=>el.remove(),4000);
+    },i*30);
+  }
+}
+
+// ── 事件綁定 ─────────────────────────────────────────────────────
+const btn=document.getElementById('btn-turn');
+btn.addEventListener('mousedown',  onPressStart);
+btn.addEventListener('touchstart',  e=>{e.preventDefault();onPressStart();},{passive:false});
+btn.addEventListener('mouseup',    onPressEnd);
+btn.addEventListener('mouseleave', onPressEnd);
+btn.addEventListener('touchend',   e=>{e.preventDefault();onPressEnd();},{passive:false});
+btn.addEventListener('touchcancel',onPressEnd);
+window.addEventListener('mouseup', onPressEnd);
+</script>
+</body>
+</html>
