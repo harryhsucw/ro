@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
+<title>打地鼠</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;}
+html{height:100%;}
+body{
+  width:100%;height:100%;overflow:hidden;position:fixed;top:0;left:0;
+  font-family:'Zen Maru Gothic','PingFang TC','Apple Color Emoji',sans-serif;
+  background:linear-gradient(160deg,#e8f5e9 0%,#c8e6c9 100%);
+  display:flex;justify-content:center;
+  touch-action:none;
+}
+#viewport{
+  position:relative;width:100%;max-width:420px;height:100%;
+  display:flex;flex-direction:column;align-items:center;
+  padding:0 12px;
+  padding-top:max(clamp(12px,3vw,20px),env(safe-area-inset-top));
+  padding-bottom:max(clamp(12px,3vw,20px),env(safe-area-inset-bottom));
+  gap:clamp(8px,2vw,12px);
+}
+
+/* ── 頂部資訊 ── */
+.top-bar{
+  width:100%;display:flex;justify-content:space-between;align-items:center;
+  flex-shrink:0;
+}
+.info-box{
+  background:white;border-radius:16px;
+  padding:clamp(6px,2vw,10px) clamp(12px,3.5vw,18px);
+  box-shadow:0 2px 12px rgba(0,0,0,0.08);
+  text-align:center;min-width:clamp(70px,20vw,90px);
+}
+.info-label{font-size:clamp(9px,2.4vw,11px);color:#888;letter-spacing:0.08em;}
+.info-val{font-size:clamp(20px,5.5vw,26px);font-weight:700;color:#333;line-height:1.1;}
+#timer-val{color:#e53935;}
+#score-val{color:#43a047;}
+
+/* ── 連擊 ── */
+#combo-wrap{
+  flex-shrink:0;height:clamp(22px,5.5vw,28px);
+  display:flex;align-items:center;justify-content:center;
+}
+#combo-text{
+  font-size:clamp(13px,3.8vw,16px);font-weight:700;
+  color:#ff6f00;letter-spacing:0.05em;
+  opacity:0;transform:scale(0.8);
+  transition:opacity 0.2s,transform 0.2s;
+}
+#combo-text.show{opacity:1;transform:scale(1);}
+
+/* ── 草地格子 ── */
+#grid-wrap{
+  flex:1;min-height:0;
+  display:flex;align-items:center;justify-content:center;
+  width:100%;
+}
+#grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  grid-template-rows:repeat(4,1fr);
+  gap:clamp(8px,2.5vw,12px);
+  width:100%;
+  height:100%;
+}
+
+/* ── 單格 ── */
+.hole{
+  position:relative;
+  border-radius:clamp(14px,4vw,20px);
+  background:linear-gradient(160deg,#a5d6a7,#81c784);
+  box-shadow:0 4px 0 #4caf50, 0 6px 12px rgba(0,0,0,0.12);
+  display:flex;align-items:flex-end;justify-content:center;
+  overflow:hidden;
+  cursor:pointer;
+  transition:transform 0.08s;
+}
+.hole:active{transform:scale(0.94);}
+
+/* 洞口暗區 */
+.hole-dark{
+  position:absolute;bottom:0;left:0;right:0;
+  height:40%;
+  background:radial-gradient(ellipse 80% 60% at 50% 100%, rgba(0,0,0,0.25), transparent);
+  pointer-events:none;
+  border-radius:0 0 clamp(14px,4vw,20px) clamp(14px,4vw,20px);
+}
+
+/* 角色 */
+.critter{
+  position:absolute;
+  font-size:clamp(28px,8vw,38px);
+  bottom:-110%;
+  left:50%;transform:translateX(-50%);
+  transition:bottom 0.18s cubic-bezier(.34,1.56,.64,1);
+  pointer-events:none;
+  z-index:2;
+  filter:drop-shadow(0 -2px 4px rgba(0,0,0,0.2));
+}
+.critter.up{bottom:2%;}
+.critter.hit{
+  animation:hit-squish 0.25s ease forwards;
+}
+@keyframes hit-squish{
+  0%{transform:translateX(-50%) scale(1);}
+  40%{transform:translateX(-50%) scale(1.3,0.7);}
+  100%{transform:translateX(-50%) scale(0.1,0.1);opacity:0;}
+}
+
+/* ── 打擊特效 ── */
+.hit-fx{
+  position:absolute;
+  font-size:clamp(16px,4.5vw,22px);
+  font-weight:700;
+  pointer-events:none;z-index:10;
+  animation:fx-pop 0.7s ease-out forwards;
+  white-space:nowrap;
+  top:10%;left:50%;transform:translateX(-50%);
+}
+@keyframes fx-pop{
+  0%{opacity:1;transform:translateX(-50%) translateY(0) scale(1);}
+  100%{opacity:0;transform:translateX(-50%) translateY(-40px) scale(1.2);}
+}
+
+/* ── 開始/結束 overlay ── */
+#overlay{
+  position:fixed;inset:0;z-index:50;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:rgba(200,230,201,0.92);
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+  gap:clamp(10px,3vw,16px);
+  padding:24px;
+  transition:opacity 0.4s;
+}
+#overlay.hide{opacity:0;pointer-events:none;}
+
+.overlay-emoji{font-size:clamp(52px,15vw,68px);}
+.overlay-title{font-size:clamp(22px,6vw,28px);font-weight:700;color:#2e7d32;text-align:center;letter-spacing:0.06em;}
+.overlay-sub{font-size:clamp(13px,3.8vw,15px);color:#555;text-align:center;line-height:1.6;}
+.overlay-score{
+  font-size:clamp(36px,10vw,48px);font-weight:700;color:#e53935;
+  text-shadow:0 2px 8px rgba(229,57,53,0.3);
+}
+.overlay-rank{font-size:clamp(13px,3.8vw,15px);color:#ff6f00;font-weight:700;}
+
+.btn-start{
+  border:none;border-radius:99px;
+  background:linear-gradient(135deg,#66bb6a,#43a047);
+  color:white;
+  padding:clamp(13px,3.8vw,16px) clamp(40px,11vw,56px);
+  font-family:inherit;font-size:clamp(16px,4.5vw,18px);font-weight:700;
+  letter-spacing:0.1em;cursor:pointer;
+  box-shadow:0 4px 0 #2e7d32,0 6px 16px rgba(67,160,71,0.4);
+  transition:transform 0.1s,box-shadow 0.1s;
+}
+.btn-start:active{transform:translateY(3px);box-shadow:0 1px 0 #2e7d32,0 3px 8px rgba(67,160,71,0.3);}
+
+/* ── 粒子 ── */
+.sparkle{position:fixed;pointer-events:none;z-index:100;animation:sp var(--d,1s) ease-out forwards;}
+@keyframes sp{0%{opacity:1;transform:translate(0,0) scale(1);}100%{opacity:0;transform:translate(var(--tx,0px),var(--ty,-80px)) scale(0.2);}}
+</style>
+</head>
+<body>
+<div id="viewport">
+
+  <div class="top-bar">
+    <div class="info-box">
+      <div class="info-label">分數</div>
+      <div class="info-val" id="score-val">0</div>
+    </div>
+    <div class="info-box">
+      <div class="info-label">時間</div>
+      <div class="info-val" id="timer-val">30</div>
+    </div>
+    <div class="info-box">
+      <div class="info-label">最高</div>
+      <div class="info-val" id="best-val">0</div>
+    </div>
+  </div>
+
+  <div id="combo-wrap"><div id="combo-text">🔥 3 連擊！</div></div>
+
+  <div id="grid-wrap">
+    <div id="grid"></div>
+  </div>
+
+</div>
+
+<!-- Overlay -->
+<div id="overlay">
+  <div class="overlay-emoji" id="ov-emoji">🐭</div>
+  <div class="overlay-title" id="ov-title">若若打地鼠！</div>
+  <div class="overlay-sub" id="ov-sub">🐭 普通老鼠 +10<br>⭐ 黃金鼠 +30<br>💣 炸彈 -15　打到炸彈小心！</div>
+  <div class="overlay-score" id="ov-score" style="display:none"></div>
+  <div class="overlay-rank" id="ov-rank" style="display:none"></div>
+  <button class="btn-start" id="btn-start" onclick="startGame()">開始！</button>
+</div>
+
+<script>
+// ── Line height fix ───────────────────────────────────────────────
+function fixHeight(){
+  const h=window.visualViewport?window.visualViewport.height:window.innerHeight;
+  document.body.style.height=h+'px';
+  document.getElementById('viewport').style.height=h+'px';
+}
+fixHeight();
+window.addEventListener('resize',fixHeight);
+window.addEventListener('load',()=>setTimeout(fixHeight,200));
+if(window.visualViewport){window.visualViewport.addEventListener('resize',fixHeight);window.visualViewport.addEventListener('scroll',fixHeight);}
+
+// ── 設定 ─────────────────────────────────────────────────────────
+const COLS=3, ROWS=4, TOTAL=COLS*ROWS;
+const GAME_TIME=30;
+const CRITTERS={
+  mouse: {emoji:'🐭', score:10,  type:'good'},
+  gold:  {emoji:'⭐', score:30,  type:'good'},
+  bomb:  {emoji:'💣', score:-15, type:'bad'},
+};
+
+// 難度分段：出現間隔 ms、同時最多幾隻
+const LEVELS=[
+  {at:0,  interval:900, maxUp:2},
+  {at:8,  interval:700, maxUp:3},
+  {at:16, interval:550, maxUp:4},
+  {at:22, interval:420, maxUp:5},
+];
+
+// ── 狀態 ─────────────────────────────────────────────────────────
+let score=0, best=0, combo=0, timeLeft=GAME_TIME;
+let holes=[], holeTimers=[], spawnTimer=null, countdownTimer=null;
+let running=false;
+
+// ── 建格子 ───────────────────────────────────────────────────────
+function buildGrid(){
+  const grid=document.getElementById('grid');
+  grid.innerHTML='';
+  holes=[];
+  for(let i=0;i<TOTAL;i++){
+    const hole=document.createElement('div');
+    hole.className='hole';
+    hole.innerHTML=`<div class="hole-dark"></div><div class="critter" id="cr-${i}"></div>`;
+    hole.dataset.idx=i;
+    hole.addEventListener('click',()=>whack(i));
+    hole.addEventListener('touchstart',e=>{e.preventDefault();whack(i);},{passive:false});
+    grid.appendChild(hole);
+    holes.push({el:hole, critter:hole.querySelector('.critter'), state:'empty', type:null});
+  }
+}
+
+// ── 開始遊戲 ─────────────────────────────────────────────────────
+function startGame(){
+  score=0;combo=0;timeLeft=GAME_TIME;running=true;
+  buildGrid();
+  updateScore();
+  document.getElementById('timer-val').textContent=GAME_TIME;
+  document.getElementById('overlay').classList.add('hide');
+  hideCombo();
+
+  // 倒數計時
+  countdownTimer=setInterval(()=>{
+    timeLeft--;
+    document.getElementById('timer-val').textContent=timeLeft;
+    if(timeLeft<=0){endGame();return;}
+    // 換難度
+    const lvl=getCurrentLevel();
+    clearInterval(spawnTimer);
+    spawnTimer=setInterval(spawnCritter,lvl.interval);
+  },1000);
+
+  // 初始 spawn
+  const lvl=getCurrentLevel();
+  spawnTimer=setInterval(spawnCritter,lvl.interval);
+  spawnCritter();
+}
+
+function getCurrentLevel(){
+  const elapsed=GAME_TIME-timeLeft;
+  let lvl=LEVELS[0];
+  for(const l of LEVELS) if(elapsed>=l.at) lvl=l;
+  return lvl;
+}
+
+// ── 生成角色 ─────────────────────────────────────────────────────
+function spawnCritter(){
+  if(!running)return;
+  const lvl=getCurrentLevel();
+  const upCount=holes.filter(h=>h.state==='up').length;
+  if(upCount>=lvl.maxUp)return;
+
+  // 空洞
+  const empty=holes.map((h,i)=>({h,i})).filter(({h})=>h.state==='empty');
+  if(empty.length===0)return;
+  const {h,i}=empty[Math.floor(Math.random()*empty.length)];
+
+  // 決定種類：bomb 15%，gold 20%，mouse 65%
+  const r=Math.random();
+  const key=r<0.15?'bomb':r<0.35?'gold':'mouse';
+  const c=CRITTERS[key];
+
+  h.state='up';h.type=key;
+  h.critter.textContent=c.emoji;
+  h.critter.classList.remove('hit');
+  h.critter.classList.add('up');
+
+  // 停留時間
+  const stayMs=800+Math.random()*600;
+  holeTimers[i]=setTimeout(()=>retract(i),stayMs);
+}
+
+function retract(i){
+  const h=holes[i];
+  if(h.state==='empty')return;
+  h.state='empty';h.type=null;
+  h.critter.classList.remove('up','hit');
+  h.critter.textContent='';
+  if(h.state!=='hit') combo=0; // 沒打到重置連擊
+}
+
+// ── 打擊 ─────────────────────────────────────────────────────────
+function whack(i){
+  if(!running)return;
+  const h=holes[i];
+  if(h.state!=='up')return;
+
+  clearTimeout(holeTimers[i]);
+  const c=CRITTERS[h.type];
+  const isGood=c.type==='good';
+
+  if(isGood) combo++;
+  else combo=0;
+
+  score=Math.max(0,score+c.score);
+  updateScore();
+  showHitFx(i, c.score, c.type);
+  showComboIfNeeded();
+
+  // 打擊動畫
+  h.state='hit';
+  h.critter.classList.remove('up');
+  h.critter.classList.add('hit');
+  setTimeout(()=>{
+    h.state='empty';h.type=null;
+    h.critter.classList.remove('hit');
+    h.critter.textContent='';
+  },250);
+
+  // 震動
+  if(navigator.vibrate) navigator.vibrate(isGood?30:80);
+
+  spawnSparkle(h.el, isGood);
+}
+
+// ── 打擊特效 ─────────────────────────────────────────────────────
+function showHitFx(i,pts,type){
+  const h=holes[i];
+  const fx=document.createElement('div');
+  fx.className='hit-fx';
+  fx.textContent=pts>0?`+${pts}`:`${pts}`;
+  fx.style.color=type==='good'?(pts>=30?'#f59e0b':'#43a047'):'#e53935';
+  h.el.appendChild(fx);
+  setTimeout(()=>fx.remove(),700);
+}
+
+function spawnSparkle(el,isGood){
+  const rect=el.getBoundingClientRect();
+  const cx=rect.left+rect.width/2;
+  const cy=rect.top+rect.height/2;
+  const emojis=isGood?['✨','⭐','💫']:['💥','🔥'];
+  for(let i=0;i<3;i++){
+    const s=document.createElement('div');
+    s.className='sparkle';
+    s.textContent=emojis[Math.floor(Math.random()*emojis.length)];
+    s.style.fontSize=clamp(14,20)+'px';
+    s.style.left=(cx+(Math.random()-0.5)*40)+'px';
+    s.style.top=(cy+(Math.random()-0.5)*40)+'px';
+    s.style.setProperty('--d',(0.5+Math.random()*0.5)+'s');
+    s.style.setProperty('--tx',(Math.random()-0.5)*60+'px');
+    s.style.setProperty('--ty',-(30+Math.random()*50)+'px');
+    document.body.appendChild(s);
+    setTimeout(()=>s.remove(),1200);
+  }
+}
+function clamp(a,b){return a+Math.random()*(b-a);}
+
+// ── 連擊 ─────────────────────────────────────────────────────────
+let comboHideTimer=null;
+function showComboIfNeeded(){
+  if(combo<3)return;
+  const el=document.getElementById('combo-text');
+  el.textContent=`🔥 ${combo} 連擊！`;
+  el.classList.add('show');
+  clearTimeout(comboHideTimer);
+  comboHideTimer=setTimeout(hideCombo,1200);
+}
+function hideCombo(){document.getElementById('combo-text').classList.remove('show');}
+
+// ── 更新分數 ─────────────────────────────────────────────────────
+function updateScore(){
+  document.getElementById('score-val').textContent=score;
+  if(score>best){best=score;document.getElementById('best-val').textContent=best;}
+}
+
+// ── 結束遊戲 ─────────────────────────────────────────────────────
+function endGame(){
+  running=false;
+  clearInterval(spawnTimer);
+  clearInterval(countdownTimer);
+  holes.forEach(h=>{h.critter.classList.remove('up');h.state='empty';});
+
+  // 評分
+  let emoji,title,rank;
+  if(score>=300){emoji='👑';title='傳說打地鼠！';rank='👑 S 級獵人';}
+  else if(score>=200){emoji='🏆';title='超強！';rank='🥇 A 級高手';}
+  else if(score>=120){emoji='🌟';title='打得不錯！';rank='🥈 B 級玩家';}
+  else if(score>=60){emoji='😊';title='繼續加油！';rank='🥉 C 級新手';}
+  else{emoji='🐭';title='老鼠笑你啦！';rank='🐭 被老鼠嘲笑中';}
+
+  const ov=document.getElementById('overlay');
+  document.getElementById('ov-emoji').textContent=emoji;
+  document.getElementById('ov-title').textContent=title;
+  document.getElementById('ov-sub').textContent=`本局得分`;
+  document.getElementById('ov-score').textContent=score+' 分';
+  document.getElementById('ov-score').style.display='block';
+  document.getElementById('ov-rank').textContent=rank;
+  document.getElementById('ov-rank').style.display='block';
+  document.getElementById('btn-start').textContent='再打一局！';
+  ov.classList.remove('hide');
+}
+</script>
+</body>
+</html>
