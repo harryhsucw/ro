@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
+<title>捏捏熊</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;}
+html{height:100%;}
+body{
+  width:100%;height:100%;overflow:hidden;position:fixed;top:0;left:0;
+  font-family:'Zen Maru Gothic','PingFang TC','Apple Color Emoji',sans-serif;
+  background:#f8f0eb;
+  background-image:
+    radial-gradient(rgba(255,255,255,0.6) 15%, transparent 16%),
+    radial-gradient(rgba(255,255,255,0.6) 15%, transparent 16%);
+  background-size:40px 40px;
+  background-position:0 0,20px 20px;
+  display:flex;justify-content:center;
+  touch-action:none;
+}
+#viewport{
+  position:relative;width:100%;max-width:420px;height:100%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  overflow:hidden;
+  gap:0;
+}
+
+/* ── 說話泡泡 ── */
+#speech-wrap{
+  position:relative;z-index:20;
+  margin-bottom:clamp(8px,2.5vw,14px);
+  min-height:clamp(44px,11vw,54px);
+  display:flex;align-items:center;justify-content:center;
+}
+#speech{
+  background:white;
+  border-radius:clamp(16px,4.5vw,22px);
+  border:2px solid #e8c8b0;
+  padding:clamp(7px,2vw,11px) clamp(16px,4.5vw,22px);
+  font-size:clamp(14px,3.8vw,17px);font-weight:700;color:#8a5a3a;
+  text-align:center;
+  box-shadow:0 5px 18px rgba(180,110,60,0.1);
+  opacity:0;transform:translateY(8px) scale(0.92);
+  transition:opacity 0.28s cubic-bezier(.34,1.56,.64,1),transform 0.28s cubic-bezier(.34,1.56,.64,1);
+  white-space:nowrap;position:relative;
+}
+#speech.show{opacity:1;transform:translateY(0) scale(1);}
+#speech::after{content:'';position:absolute;bottom:-13px;left:50%;transform:translateX(-50%);border:6px solid transparent;border-top-color:#e8c8b0;}
+#speech::before{content:'';position:absolute;bottom:-10px;left:50%;transform:translateX(-50%);border:6px solid transparent;border-top-color:white;z-index:1;}
+
+/* ── 熊熊場景容器 ── */
+#bear-scene{
+  position:relative;z-index:10;
+  cursor:pointer;
+  flex-shrink:0;
+}
+
+/* SVG 水彩 filter */
+#bear-scene svg.filter-svg{position:absolute;width:0;height:0;}
+
+/* 熊的整體縮放容器 */
+#bear-scale{
+  transform-origin:center bottom;
+  transition:transform 0.18s cubic-bezier(.34,1.56,.64,1);
+}
+
+/* ── 精緻熊 CSS ── */
+:root{
+  --bear-base:#dec0a4;--bear-dark:#b89170;--bear-shadow:#946f50;
+  --bear-light:#f3dfcc;--snout-bg:#fdf7f0;--nose-color:#3b2314;
+  --eye-color:#2b180d;--blush-color:rgba(240,140,140,0.55);
+  --bear-scale:0.72; /* 整體縮放 */
+}
+
+.canvas{
+  position:relative;
+  width:calc(450px * var(--bear-scale));
+  height:calc(480px * var(--bear-scale));
+  filter:url(#watercolor-filter) drop-shadow(0 12px 20px rgba(110,80,60,0.13));
+  transform-origin:center bottom;
+  transition:transform 0.18s cubic-bezier(.34,1.56,.64,1);
+}
+
+.watercolor-part{position:absolute;background-blend-mode:multiply;}
+
+.head{
+  width:calc(220px * var(--bear-scale));height:calc(190px * var(--bear-scale));
+  left:calc(115px * var(--bear-scale));top:calc(75px * var(--bear-scale));
+  border-radius:50% 50% 48% 48% / 55% 55% 45% 45%;
+  background:
+    radial-gradient(circle at 50% 30%,transparent 40%,rgba(148,111,80,0.25) 85%),
+    radial-gradient(circle at 50% 60%,var(--bear-light) 0%,var(--bear-base) 60%,var(--bear-dark) 100%);
+  border:2px solid rgba(148,111,80,0.15);z-index:5;
+  transition:transform 0.18s cubic-bezier(.34,1.56,.64,1);
+}
+
+.ear{
+  width:calc(76px * var(--bear-scale));height:calc(76px * var(--bear-scale));
+  border-radius:50%;border:2px solid rgba(148,111,80,0.15);z-index:2;
+}
+.ear.left{
+  left:calc(105px * var(--bear-scale));top:calc(50px * var(--bear-scale));
+  background:radial-gradient(circle at 65% 65%,var(--bear-light) 20%,var(--bear-base) 50%,var(--bear-dark) 100%);
+  transform:rotate(-15deg);
+}
+.ear.right{
+  right:calc(105px * var(--bear-scale));top:calc(50px * var(--bear-scale));
+  background:radial-gradient(circle at 35% 65%,var(--bear-light) 20%,var(--bear-base) 50%,var(--bear-dark) 100%);
+  transform:rotate(15deg);
+}
+.ear-inner{
+  width:calc(46px * var(--bear-scale));height:calc(46px * var(--bear-scale));
+  border-radius:50%;position:absolute;top:calc(15px * var(--bear-scale));
+  background:radial-gradient(circle at 50% 50%,#e0bc9b 20%,#ab8260 90%);
+  opacity:0.9;box-shadow:inset 0 4px 8px rgba(70,45,30,0.3);
+}
+.left .ear-inner{left:calc(18px * var(--bear-scale));}
+.right .ear-inner{right:calc(18px * var(--bear-scale));}
+
+.eye{
+  width:calc(20px * var(--bear-scale));height:calc(24px * var(--bear-scale));
+  background-color:var(--eye-color);
+  border-radius:50% 50% 48% 48% / 52% 52% 48% 48%;
+  position:absolute;top:calc(76px * var(--bear-scale));z-index:8;
+  box-shadow:0 1px 3px rgba(0,0,0,0.15);
+  transition:all 0.25s cubic-bezier(.34,1.56,.64,1);
+  display:flex;align-items:center;justify-content:center;overflow:hidden;
+}
+.eye.left{left:calc(52px * var(--bear-scale));}
+.eye.right{right:calc(52px * var(--bear-scale));}
+.eye::before{content:'';position:absolute;width:35%;height:30%;background:#fff;border-radius:50%;top:18%;left:18%;}
+.eye::after{content:'';position:absolute;width:18%;height:16%;background:rgba(255,255,255,0.75);border-radius:50%;top:55%;left:55%;opacity:0.8;}
+
+.blush{
+  width:calc(44px * var(--bear-scale));height:calc(26px * var(--bear-scale));
+  background:radial-gradient(ellipse at center,var(--blush-color) 0%,rgba(240,140,140,0) 75%);
+  border-radius:50%;position:absolute;top:calc(98px * var(--bear-scale));z-index:7;
+  opacity:0;transition:opacity 0.4s;
+}
+.blush.left{left:calc(24px * var(--bear-scale));}
+.blush.right{right:calc(24px * var(--bear-scale));}
+
+.snout{
+  width:calc(90px * var(--bear-scale));height:calc(74px * var(--bear-scale));
+  background:radial-gradient(circle at 50% 20%,#fff 20%,var(--snout-bg) 60%,#e0d1c1 100%);
+  border-radius:50% 50% 46% 46% / 55% 55% 45% 45%;
+  position:absolute;left:50%;bottom:calc(22px * var(--bear-scale));
+  transform:translateX(-50%);border:1px solid rgba(148,111,80,0.12);z-index:7;
+  box-shadow:inset 0 -5px 10px rgba(148,111,80,0.1),0 4px 8px rgba(70,45,30,0.06);
+}
+.nose{
+  width:calc(32px * var(--bear-scale));height:calc(22px * var(--bear-scale));
+  background:radial-gradient(circle at 50% 30%,#5c3e2b 10%,var(--nose-color) 80%);
+  border-radius:52% 52% 40% 40% / 60% 60% 40% 40%;
+  position:absolute;top:calc(15px * var(--bear-scale));left:50%;transform:translateX(-50%);
+  box-shadow:0 2px 4px rgba(0,0,0,0.12);
+}
+.nose::before{content:'';position:absolute;width:32%;height:20%;background:rgba(255,255,255,0.42);border-radius:50%;top:14%;left:50%;transform:translateX(-50%);}
+
+/* 嘴巴 */
+#mouth-container{
+  position:absolute;top:calc(35px * var(--bear-scale));left:50%;transform:translateX(-50%);
+  width:calc(36px * var(--bear-scale));height:calc(20px * var(--bear-scale));
+}
+#mouth-line::before{content:'';position:absolute;width:2px;height:calc(10px * var(--bear-scale));background:#5c3d28;left:50%;transform:translateX(-50%);}
+.mouth-curve{
+  position:absolute;width:calc(18px * var(--bear-scale));height:calc(12px * var(--bear-scale));
+  border:2px solid #5c3d28;border-top:none;border-radius:0 0 10px 10px;top:calc(6px * var(--bear-scale));
+  transition:all 0.3s cubic-bezier(.34,1.56,.64,1);
+}
+.mouth-curve.left{right:50%;border-right:1px solid #5c3d28;border-radius:0 0 0 9px;}
+.mouth-curve.right{left:50%;border-left:1px solid #5c3d28;border-radius:0 0 9px 0;}
+
+.body{
+  width:calc(210px * var(--bear-scale));height:calc(230px * var(--bear-scale));
+  left:calc(120px * var(--bear-scale));top:calc(220px * var(--bear-scale));
+  border-radius:52% 52% 50% 50% / 40% 40% 60% 60%;
+  background:
+    radial-gradient(circle at 50% 20%,transparent 30%,rgba(148,111,80,0.25) 90%),
+    radial-gradient(circle at 50% 50%,var(--bear-light) 0%,var(--bear-base) 60%,var(--bear-dark) 100%);
+  border:2px solid rgba(148,111,80,0.15);z-index:3;
+}
+.belly{
+  width:calc(120px * var(--bear-scale));height:calc(140px * var(--bear-scale));
+  background:radial-gradient(circle at 50% 50%,#fff 20%,var(--snout-bg) 75%,#ebd8c8 100%);
+  border-radius:50%;position:absolute;top:calc(45px * var(--bear-scale));left:50%;transform:translateX(-50%);
+  opacity:0.9;box-shadow:inset 0 2px 10px rgba(148,111,80,0.1);
+}
+
+/* ── 雙手定位調整（往下平移、改進聳肩問題） ── */
+.arm{
+  position:absolute;
+  border:2px solid rgba(148,111,80,0.12);
+  z-index:4;
+  transition:transform 0.4s cubic-bezier(.34,1.56,.64,1);
+  width:calc(62px * var(--bear-scale));
+  height:calc(105px * var(--bear-scale));
+}
+.arm.left{
+  left:calc(92px * var(--bear-scale));  /* 往兩側拉開一點 */
+  top:calc(242px * var(--bear-scale));   /* 往下移 27px，解決聳肩感 */
+  border-radius: 40px 30px 30px 40px / 70px 40px 40px 50px;
+  background:
+    radial-gradient(circle at 75% 30%, var(--bear-light) 10%, var(--bear-base) 60%, var(--bear-dark) 100%);
+  transform: rotate(24deg);
+  transform-origin: 75% 15%;            /* 完美的旋轉支點 */
+}
+.arm.right{
+  right:calc(92px * var(--bear-scale)); /* 往兩側拉開一點 */
+  top:calc(242px * var(--bear-scale));  /* 往下移 27px，解決聳肩感 */
+  border-radius: 30px 40px 40px 30px / 40px 70px 50px 40px;
+  background:
+    radial-gradient(circle at 25% 30%, var(--bear-light) 10%, var(--bear-base) 60%, var(--bear-dark) 100%);
+  transform: rotate(-24deg);
+  transform-origin: 25% 15%;            /* 完美的旋轉支點 */
+}
+
+/* ── 雙腿位置 ── */
+.leg{
+  width:calc(105px * var(--bear-scale));
+  height:calc(105px * var(--bear-scale));
+  border-radius:50%;
+  border:2px solid rgba(148,111,80,0.15);
+  z-index:6;
+  box-shadow:0 8px 16px rgba(94,69,50,0.12);
+}
+.leg.left{
+  left:calc(75px * var(--bear-scale));
+  bottom:calc(12px * var(--bear-scale));
+  background:radial-gradient(circle at 55% 45%,var(--bear-light) 20%,var(--bear-base) 65%,var(--bear-dark) 100%);
+}
+.leg.right{
+  right:calc(75px * var(--bear-scale));
+  bottom:calc(12px * var(--bear-scale));
+  background:radial-gradient(circle at 45% 45%,var(--bear-light) 20%,var(--bear-base) 65%,var(--bear-dark) 100%);
+}
+.foot-pad-main{
+  width:calc(60px * var(--bear-scale));height:calc(50px * var(--bear-scale));
+  background:radial-gradient(circle at 50% 50%,#fff 10%,#f1d3bd 60%,#e0b496 100%);
+  border-radius:50% 50% 46% 46% / 55% 55% 45% 45%;
+  position:absolute;left:50%;top:calc(42px * var(--bear-scale));transform:translateX(-50%);
+  box-shadow:inset 0 3px 6px rgba(110,70,50,0.15);
+}
+.toe{
+  width:calc(16px * var(--bear-scale));height:calc(20px * var(--bear-scale));
+  background:radial-gradient(circle at 50% 50%,#fff 10%,#f1d3bd 60%,#e0b496 100%);
+  border-radius:50%;position:absolute;box-shadow:inset 0 2px 4px rgba(110,70,50,0.1);
+}
+.toe-1{top:calc(15px * var(--bear-scale));left:calc(18px * var(--bear-scale));transform:rotate(-15deg);}
+.toe-2{top:calc(8px * var(--bear-scale));left:50%;transform:translateX(-50%);}
+.toe-3{top:calc(15px * var(--bear-scale));right:calc(18px * var(--bear-scale));transform:rotate(15deg);}
+
+/* Zzz */
+#zzz-wrap{display:none;position:absolute;top:calc(55px * var(--bear-scale));right:calc(90px * var(--bear-scale));z-index:20;}
+.zzz{display:block;font-size:clamp(12px,3.2vw,16px);font-weight:700;color:#a0b8d8;opacity:0;animation:zzz-rise 2.4s ease-in-out infinite;}
+.zzz:nth-child(2){font-size:clamp(9px,2.5vw,12px);animation-delay:0.8s;}
+.zzz:nth-child(3){font-size:clamp(7px,2vw,9px);animation-delay:1.6s;}
+@keyframes zzz-rise{0%{opacity:0;transform:translateY(0) scale(0.7);}40%{opacity:1;}100%{opacity:0;transform:translateY(-28px) scale(1);}}
+
+/* ── 整體動畫（作用在 .canvas） ── */
+.canvas.squish{transform:scaleX(1.22) scaleY(0.76);}
+.canvas.squish .head{transform:translateX(-50%) scaleY(0.9) !important;}
+.canvas.jump{animation:b-jump 0.55s cubic-bezier(.34,1.56,.64,1) forwards;}
+@keyframes b-jump{0%{transform:translateY(0);}45%{transform:translateY(-32px);}100%{transform:translateY(0);}}
+.canvas.bounce{animation:b-bounce 0.38s cubic-bezier(.34,1.56,.64,1) forwards;}
+@keyframes b-bounce{0%{transform:scale(1);}40%{transform:scale(1.08,0.93);}70%{transform:scale(0.97,1.04);}100%{transform:scale(1);}}
+.canvas.shake{animation:b-shake 0.5s ease forwards;}
+@keyframes b-shake{0%,100%{transform:rotate(0);}25%{transform:rotate(-8deg);}75%{transform:rotate(8deg);}}
+.canvas.dance{animation:b-dance 0.55s ease-in-out infinite alternate;}
+@keyframes b-dance{0%{transform:rotate(-9deg) translateY(-5px);}100%{transform:rotate(9deg) translateY(3px);}}
+.canvas.sleep{animation:b-sway 3.5s ease-in-out infinite;}
+@keyframes b-sway{0%,100%{transform:rotate(-4deg);}50%{transform:rotate(4deg);}}
+
+/* ── 調整動作時的肩膀旋轉角度，更顯自然 ── */
+/* 微張：點擊與跳躍 */
+.canvas.bounce .arm.left,
+.canvas.jump .arm.left  { transform: rotate(-15deg) !important; }
+.canvas.bounce .arm.right,
+.canvas.jump .arm.right { transform: rotate(15deg) !important; }
+
+/* 搖頭：稍微夾緊 */
+.canvas.shake .arm.left  { transform: rotate(12deg) !important; }
+.canvas.shake .arm.right { transform: rotate(-12deg) !important; }
+
+/* 跳舞：雙手向上開心揮舞 */
+.canvas.dance .arm.left  { transform: rotate(-60deg) !important; }
+.canvas.dance .arm.right { transform: rotate(60deg) !important; }
+
+/* 睡著：軟綿綿地自然垂下 */
+.canvas.sleep .arm.left  { transform: rotate(16deg) !important; }
+.canvas.sleep .arm.right { transform: rotate(-16deg) !important; }
+
+/* ── 提示 ── */
+#hint{
+  position:relative;z-index:10;
+  margin-top:clamp(10px,3vw,18px);
+  font-size:clamp(11px,3vw,13px);
+  color:rgba(180,120,70,0.5);letter-spacing:0.1em;
+}
+
+/* ── 粒子 ── */
+.pfx{position:fixed;pointer-events:none;z-index:100;font-size:clamp(12px,3.5vw,18px);animation:pfx var(--d,.8s) ease-out forwards;}
+@keyframes pfx{0%{opacity:1;transform:translate(0,0) scale(1) rotate(0);}100%{opacity:0;transform:translate(var(--tx,0),var(--ty,-70px)) scale(0.3) rotate(var(--r,180deg));}}
+</style>
+</head>
+<body>
+<div id="viewport">
+
+  <div id="speech-wrap"><div id="speech">嗨～我是小熊！快來捏我！🐾</div></div>
+
+  <div id="bear-scene">
+    <!-- 水彩 SVG filter -->
+    <svg class="filter-svg" style="position:absolute;width:0;height:0;">
+      <filter id="watercolor-filter">
+        <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="4" result="noise"/>
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="4" xChannelSelector="R" yChannelSelector="G" result="displaced"/>
+        <feGaussianBlur in="displaced" stdDeviation="0.6" result="blurred"/>
+        <feMerge><feMergeNode in="blurred"/><feMergeNode in="SourceGraphic" opacity="0.07"/></feMerge>
+      </filter>
+    </svg>
+
+    <div class="canvas" id="bear">
+      <div class="watercolor-part ear left"><div class="ear-inner"></div></div>
+      <div class="watercolor-part ear right"><div class="ear-inner"></div></div>
+      <div class="watercolor-part body"><div class="belly"></div></div>
+      <div class="watercolor-part arm left" id="arm-l"></div>
+      <div class="watercolor-part arm right" id="arm-r"></div>
+      <div class="watercolor-part leg left">
+        <div class="toe toe-1"></div><div class="toe toe-2"></div><div class="toe toe-3"></div>
+        <div class="foot-pad-main"></div>
+      </div>
+      <div class="watercolor-part leg right">
+        <div class="toe toe-1"></div><div class="toe toe-2"></div><div class="toe toe-3"></div>
+        <div class="foot-pad-main"></div>
+      </div>
+      <div class="watercolor-part head" id="head">
+        <div class="eye left" id="eye-l"></div>
+        <div class="eye right" id="eye-r"></div>
+        <div class="blush left" id="blush-l"></div>
+        <div class="blush right" id="blush-r"></div>
+        <div class="snout">
+          <div class="nose"></div>
+          <div id="mouth-container">
+            <div id="mouth-line">
+              <div class="mouth-curve left" id="mc-l"></div>
+              <div class="mouth-curve right" id="mc-r"></div>
+            </div>
+          </div>
+        </div>
+        <div id="zzz-wrap">
+          <span class="zzz">Z</span><span class="zzz">z</span><span class="zzz">z</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="hint">輕點我 🐾</div>
+</div>
+
+<script>
+function fixHeight(){
+  const h=window.visualViewport?window.visualViewport.height:window.innerHeight;
+  document.body.style.height=h+'px';
+  document.getElementById('viewport').style.height=h+'px';
+}
+fixHeight();
+window.addEventListener('resize',fixHeight);
+window.addEventListener('load',()=>setTimeout(fixHeight,200));
+if(window.visualViewport){window.visualViewport.addEventListener('resize',fixHeight);window.visualViewport.addEventListener('scroll',fixHeight);}
+
+const bear=document.getElementById('bear');
+const eyeL=document.getElementById('eye-l');
+const eyeR=document.getElementById('eye-r');
+const blushL=document.getElementById('blush-l');
+const blushR=document.getElementById('blush-r');
+const mcL=document.getElementById('mc-l');
+const mcR=document.getElementById('mc-r');
+const mline=document.getElementById('mouth-line');
+const speech=document.getElementById('speech');
+const hint=document.getElementById('hint');
+const zzz=document.getElementById('zzz-wrap');
+
+let tapCount=0,isSleeping=false,isPressed=false,pressStart=0;
+let speechT=null,stateT=null,pressT=null;
+
+const STAGES=[
+  {max:1,  state:'bounce', m:'smile', e:'sparkle',blush:true,  say:'若若來了！😊',     p:['⭐','✨','💕']},
+  {max:3,  state:'jump',   m:'smile', e:'happy',  blush:true,  say:'嘿嘿～再捏一下！',     p:['💕','✨','🌸']},
+  {max:5,  state:'bounce', m:'big',   e:'sparkle',blush:true,  say:'哈哈哈！！😆',          p:['😆','✨','💫','⭐']},
+  {max:8,  state:'shake',  m:'ohno',  e:'dizzy',  blush:false, say:'好癢喔⋯⋯等一下！',    p:['💫','😵']},
+  {max:11, state:'shake',  m:'angry', e:'angry',  blush:false, say:'等下等下！😤',          p:['💢','😤']},
+  {max:14, state:'shake',  m:'cry',   e:'cry',    blush:false, say:'嗚嗚嗚⋯⋯😢',          p:['💧','😢']},
+  {max:18, state:'dance',  m:'big',   e:'heart',  blush:true,  say:'好啦我最喜歡你了～💃',   p:['💕','🎵','✨','🌸']},
+  {max:Infinity,state:'dance',m:'big',e:'heart',  blush:true,  say:'你就是喜歡欺負我！！',   p:['💕','🌟','💃','✨']},
+];
+
+const sc=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bear-scale'))||0.72;
+
+function setMouth(t){
+  const w=`calc(18px * ${sc})`,h=`calc(12px * ${sc})`;
+  const style='2px solid #5c3d28';
+  [mcL,mcR].forEach(c=>{c.style.cssText=`position:absolute;width:${w};height:${h};border:${style};border-top:none;top:calc(6px * ${sc});transition:all 0.3s cubic-bezier(.34,1.56,.64,1);`;});
+  mcL.style.right='50%';mcL.style.borderRight=`1px solid #5c3d28`;mcL.style.borderRadius='0 0 0 9px';
+  mcR.style.left='50%'; mcR.style.borderLeft=`1px solid #5c3d28`; mcR.style.borderRadius='0 0 9px 0';
+  mline.style.cssText='';
+  switch(t){
+    case 'smile': break;
+    case 'big':
+      mcL.style.width=mcR.style.width=`calc(22px * ${sc})`;
+      mcL.style.height=mcR.style.height=`calc(16px * ${sc})`;
+      break;
+    case 'ohno':
+      mcL.style.borderRadius=mcR.style.borderRadius='50%';
+      mcL.style.border=mcR.style.border='none';
+      mcL.style.background=mcR.style.background='#5c3d28';
+      mcL.style.width=mcR.style.width=`calc(10px * ${sc})`;
+      mcL.style.height=mcR.style.height=`calc(10px * ${sc})`;
+      mcL.style.top=mcR.style.top=`calc(8px * ${sc})`;
+      break;
+    case 'angry':
+      [mcL,mcR].forEach(c=>{c.style.border=style;c.style.borderBottom='none';c.style.borderTop=style;c.style.height=`calc(8px * ${sc})`;});
+      mcL.style.borderRight=`1px solid #5c3d28`;mcL.style.borderRadius='9px 0 0 0';
+      mcR.style.borderLeft=`1px solid #5c3d28`;mcR.style.borderRadius='0 9px 0 0';
+      break;
+    case 'cry':
+      [mcL,mcR].forEach(c=>{c.style.border=style;c.style.borderBottom='none';c.style.borderTop=style;c.style.height=`calc(9px * ${sc})`;});
+      mcL.style.borderRight=`1px solid #5c3d28`;mcL.style.borderRadius='9px 0 0 0';
+      mcR.style.borderLeft=`1px solid #5c3d28`;mcR.style.borderRadius='0 9px 0 0';
+      break;
+  }
+}
+
+function setEyes(t){
+  const s=`calc(20px * ${sc})`;const h=`calc(24px * ${sc})`;
+  [eyeL,eyeR].forEach(e=>{
+    e.style.cssText=`width:${s};height:${h};position:absolute;top:calc(76px * ${sc});z-index:8;box-shadow:0 1px 3px rgba(0,0,0,0.15);transition:all 0.25s cubic-bezier(.34,1.56,.64,1);display:flex;align-items:center;justify-content:center;overflow:hidden;`;
+    e.textContent='';
+    e.className='eye '+(e===eyeL?'left':'right');
+  });
+  switch(t){
+    case 'normal':  [eyeL,eyeR].forEach(e=>{e.style.background='var(--eye-color)';e.style.borderRadius='50% 50% 48% 48% / 52% 52% 48% 48%';});break;
+    case 'happy':   [eyeL,eyeR].forEach(e=>{e.style.background='var(--eye-color)';e.style.borderRadius='50%';e.style.transform='scaleY(0.4)';});break;
+    case 'sparkle': [eyeL,eyeR].forEach(e=>{e.style.background='var(--eye-color)';e.style.borderRadius='50%';e.style.transform='scale(1.15)';});break;
+    case 'dizzy':
+      [eyeL,eyeR].forEach(e=>{
+        e.style.background='transparent';e.style.borderRadius='0';e.style.boxShadow='none';
+        e.style.color='#3b2314';e.style.fontSize=`calc(14px * ${sc})`;e.style.fontWeight='900';
+        e.textContent='×';
+      });break;
+    case 'angry':
+      [eyeL,eyeR].forEach(e=>{e.style.background='var(--eye-color)';e.style.borderRadius='50%';e.style.transform='scaleY(0.55)';});
+      eyeL.style.transform='scaleY(0.55) rotate(12deg)';eyeR.style.transform='scaleY(0.55) rotate(-12deg)';break;
+    case 'cry':
+      [eyeL,eyeR].forEach(e=>{e.style.background='var(--eye-color)';e.style.borderRadius='50% 50% 0 0';e.style.transform='scaleY(0.4)';});break;
+    case 'heart':
+      [eyeL,eyeR].forEach(e=>{
+        e.style.background='transparent';e.style.borderRadius='0';e.style.boxShadow='none';
+        e.style.color='#d0406a';e.style.fontSize=`calc(16px * ${sc})`;
+        e.textContent='♥';
+      });break;
+    case 'sleep':
+      [eyeL,eyeR].forEach(e=>{e.style.background='var(--eye-color)';e.style.borderRadius='50% 50% 0 0';e.style.transform='scaleY(0.15)';});break;
+  }
+}
+
+function setBlush(on){blushL.style.opacity=on?'1':'0';blushR.style.opacity=on?'1':'0';}
+
+function say(text,dur=2400){
+  clearTimeout(speechT);
+  speech.textContent=text;speech.classList.add('show');
+  speechT=setTimeout(()=>speech.classList.remove('show'),dur);
+}
+
+function applyStage(s){
+  bear.classList.remove('excited','jump','shake','dance','sleep','squish','bounce');
+  void bear.offsetWidth;
+  setTimeout(()=>bear.classList.add(s.state),10);
+  setMouth(s.m);setEyes(s.e);setBlush(s.blush);
+  say(s.say);spawnFx(s.p);
+  if(s.state==='jump'||s.state==='bounce'){
+    clearTimeout(stateT);
+    stateT=setTimeout(()=>{bear.classList.remove('jump','bounce');bear.classList.add('excited');},600);
+  }
+  if(s.state==='shake'){clearTimeout(stateT);stateT=setTimeout(()=>bear.classList.remove('shake'),550);}
+}
+
+function onTap(){
+  if(isSleeping){wakeUp();return;}
+  tapCount++;
+  hint.textContent=tapCount<20?`已捏 ${tapCount} 下 🐾`:'小熊快撐不住了！';
+  const s=STAGES.find(s=>tapCount<=s.max)||STAGES[STAGES.length-1];
+  applyStage(s);
+  if(tapCount>=20){clearTimeout(stateT);stateT=setTimeout(goSleep,1600);}
+  if(navigator.vibrate)navigator.vibrate(30);
+}
+
+function onPressStart(){
+  if(isSleeping){wakeUp();return;}
+  isPressed=true;
+  bear.classList.add('squish');
+  setEyes('dizzy');say('哇啊啊！！😵');
+}
+function onPressEnd(){
+  if(!isPressed)return;isPressed=false;
+  bear.classList.remove('squish');
+  bear.classList.add('jump');setEyes('sparkle');say('放開我了！💨');
+  clearTimeout(stateT);
+  stateT=setTimeout(()=>{bear.classList.remove('jump');bear.classList.add('excited');},550);
+  if(navigator.vibrate)navigator.vibrate([30,20,30]);
+}
+
+function goSleep(){
+  isSleeping=true;
+  bear.classList.remove('excited','jump','shake','dance','bounce');
+  bear.classList.add('sleep');
+  setEyes('sleep');setMouth('smile');setBlush(false);
+  zzz.style.display='block';
+  say('Zzz⋯⋯ 好睏⋯ 😴', 99999);
+  hint.textContent='熊熊睡著了，點我叫醒 😴';
+}
+function wakeUp(){
+  isSleeping=false;tapCount=0;
+  zzz.style.display='none';
+  bear.classList.remove('sleep');
+  setEyes('normal');setMouth('smile');setBlush(true);
+  say('唔⋯⋯又來囉！😊');
+  hint.textContent='輕點我 🐾';
+}
+
+function spawnFx(parts){
+  const sc2=document.getElementById('bear-scene');
+  const r=sc2.getBoundingClientRect();
+  const cx=r.left+r.width/2,cy=r.top+r.height*0.3;
+  for(let i=0;i<5;i++){
+    const el=document.createElement('div');
+    el.className='pfx';
+    el.textContent=parts[Math.floor(Math.random()*parts.length)];
+    el.style.left=(cx+(Math.random()-0.5)*100)+'px';
+    el.style.top=(cy+(Math.random()-0.5)*60)+'px';
+    el.style.setProperty('--d',(0.55+Math.random()*0.45)+'s');
+    el.style.setProperty('--tx',(Math.random()-0.5)*90+'px');
+    el.style.setProperty('--ty',-(35+Math.random()*65)+'px');
+    el.style.setProperty('--r',(Math.random()*360)+'deg');
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(),1200);
+  }
+}
+
+const scene=document.getElementById('bear-scene');
+scene.addEventListener('touchstart',e=>{e.preventDefault();pressStart=Date.now();pressT=setTimeout(onPressStart,280);},{passive:false});
+scene.addEventListener('touchend',e=>{e.preventDefault();clearTimeout(pressT);if(isPressed)onPressEnd();else if(Date.now()-pressStart<280)onTap();},{passive:false});
+scene.addEventListener('mousedown',()=>{pressStart=Date.now();pressT=setTimeout(onPressStart,280);});
+window.addEventListener('mouseup',()=>{clearTimeout(pressT);if(isPressed)onPressEnd();else if(pressStart&&Date.now()-pressStart<280)onTap();pressStart=0;});
+
+setTimeout(()=>{speech.classList.add('show');},500);
+setMouth('smile');setEyes('normal');setBlush(true);
+</script>
+</body>
+</html>
