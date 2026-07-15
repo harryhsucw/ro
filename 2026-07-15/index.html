@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>幸運餅乾</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-color:#ede8e3;
+    --cookie-main:#f5cf9e;
+    --cookie-dark:#cc9c66;
+    --cookie-shadow:#e1b27c;
+    --eye-mouth-color:#4c372a;
+    --blush-color:#f7babf;
+    --paper-bg:#ffffff;
+    --text-color:#4a3a2a;
+    --ink:#5a4a3a;
+    --ink-soft:#8a7a6a;
+    --blue:#4a9cc7;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{
+    margin:0; padding:0; width:100%; height:100%;
+    background:var(--bg-color);
+    font-family:'Zen Maru Gothic','PingFang TC','Microsoft JhengHei',sans-serif;
+    overflow:hidden;
+    position:fixed; inset:0;
+    touch-action:none; user-select:none; -webkit-user-select:none;
+    color:var(--ink);
+  }
+  #app{
+    width:100%; height:100%;
+    position:relative;
+    padding: env(safe-area-inset-top,0) env(safe-area-inset-right,0) env(safe-area-inset-bottom,0) env(safe-area-inset-left,0);
+  }
+  .header{
+    position:absolute; top:calc(env(safe-area-inset-top,0) + 16px);
+    left:0; right:0; text-align:center; z-index:5;
+    font-size:clamp(17px,4.6vw,20px); font-weight:700; letter-spacing:2px;
+  }
+  .subtitle{
+    position:absolute; top:calc(env(safe-area-inset-top,0) + 44px);
+    left:0; right:0; text-align:center; z-index:5;
+    font-size:clamp(11px,3.2vw,13px); color:var(--ink-soft); font-weight:500;
+  }
+
+  #field{ position:absolute; inset:0; }
+
+  /* ================= cookie unit (from reference design) ================= */
+  .cookie-container{ position:relative; width:320px; height:280px; }
+  .cookie-back{
+    position:absolute; width:200px; height:200px;
+    background-color:var(--cookie-main);
+    bottom:20px; right:0px;
+    border-radius:10% 50% 100% 50% / 10% 10% 90% 90%;
+    border:6px solid var(--cookie-dark);
+    transform:rotate(5deg);
+    box-shadow:inset -10px -5px 0 var(--cookie-shadow), inset 10px 5px 0 rgba(255,255,255,0.2);
+  }
+  .cookie-front{
+    position:absolute; width:260px; height:230px;
+    background-color:var(--cookie-main);
+    bottom:0; left:0;
+    border-radius:120px 120px 40px 40px;
+    border:6px solid var(--cookie-dark);
+    box-shadow:inset 0 -15px 0 var(--cookie-shadow), 10px 10px 30px rgba(0,0,0,0.1);
+    z-index:2;
+  }
+  .cookie-bottom-indent{
+    position:absolute; width:80px; height:30px;
+    background-color:var(--bg-color);
+    border-radius:50% 50% 0 0;
+    border:6px solid var(--cookie-dark); border-bottom:none;
+    bottom:-6px; left:50%; transform:translateX(-50%);
+  }
+  .face{ position:absolute; top:70px; left:50%; transform:translateX(-50%); width:140px; height:80px; }
+  .eye{ position:absolute; width:20px; height:20px; background-color:var(--eye-mouth-color); border-radius:50%; }
+  .eye-left{ left:20px; top:15px; }
+  .eye-right{
+    right:20px; top:10px; width:25px; height:10px; background:transparent;
+    border-radius:0 0 15px 15px; border-bottom:5px solid var(--eye-mouth-color);
+    border-top:none; border-left:none; border-right:none; transform:rotate(-10deg);
+  }
+  .blush{ position:absolute; width:35px; height:15px; background-color:var(--blush-color); border-radius:50%; opacity:0.8; }
+  .blush-left{ left:10px; top:45px; }
+  .blush-right{ right:10px; top:40px; }
+  .mouth{
+    position:absolute; width:40px; height:20px; background:transparent;
+    border-radius:0 0 20px 20px; border-bottom:5px solid var(--eye-mouth-color);
+    bottom:5px; left:50%; transform:translateX(-50%);
+  }
+
+  /* ---- floating mini cookie (dense field) ---- */
+  .fcookie{ position:absolute; width:66px; height:58px; cursor:pointer; }
+  .fcookie .mini-inner{ position:absolute; top:0; left:0; width:320px; height:280px; transform:scale(0.206); transform-origin:top left; }
+  .fcookie.cracking .mini-inner{ animation:jiggle .35s ease; }
+  @keyframes jiggle{ 0%,100%{transform:scale(0.206);} 40%{transform:scale(0.232) rotate(-4deg);} 70%{transform:scale(0.19) rotate(3deg);} }
+  .fcookie.hide{ opacity:0; pointer-events:none; transition:opacity .25s ease; }
+
+  /* ---- reveal overlay ---- */
+  .overlay{
+    position:fixed; inset:0; z-index:30;
+    background:rgba(74,58,42,0.45);
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity .3s ease;
+  }
+  .overlay.show{ opacity:1; pointer-events:auto; }
+
+  .reveal-card{
+    width:min(84vw,320px);
+    display:flex; flex-direction:column; align-items:center;
+    transform:scale(0.6) translateY(20px); opacity:0;
+    transition:transform .45s cubic-bezier(.2,.9,.3,1.3), opacity .35s ease;
+  }
+  .overlay.show .reveal-card{ transform:scale(1) translateY(0); opacity:1; }
+
+  /* big scaled scene: cookie + paper, reused from reference markup */
+  .scene-wrap{ position:relative; width:305px; height:210px; }
+  .scene-inner{ position:absolute; top:0; left:0; width:500px; height:340px; transform:scale(0.61); transform-origin:top left; }
+  .fortune-paper{
+    position:absolute; top:60px; left:190px; width:250px; height:80px;
+    background-color:var(--paper-bg); border-radius:4px;
+    box-shadow:2px 2px 10px rgba(0,0,0,0.15), inset 0 -5px 0 rgba(0,0,0,0.05);
+    display:flex; justify-content:center; align-items:center;
+    transform:rotate(-12deg) skewX(-5deg); z-index:1; padding:10px; box-sizing:border-box;
+  }
+  .fortune-label{
+    color:var(--text-color); font-family:'Zen Maru Gothic',sans-serif;
+    font-size:20px; font-weight:700; line-height:1.3; text-align:center; transform:rotate(2deg);
+  }
+  .cookie-container.reveal-cookie{ position:absolute; top:70px; left:40px; }
+  .cookie-container.reveal-cookie .cookie-back{ animation:crackOpen .4s ease forwards; }
+  @keyframes crackOpen{ from{ transform:rotate(5deg) translate(0,0);} to{ transform:rotate(26deg) translate(18px,-6px);} }
+
+  .reveal-text{
+    margin-top:18px; font-size:clamp(15px,4.4vw,17px); font-weight:700; line-height:1.8;
+    text-align:center; background:#fffaf2; border-radius:16px; padding:18px 20px;
+    box-shadow:0 10px 24px rgba(90,74,58,0.2); width:100%;
+  }
+  .btn{
+    margin-top:20px; padding:12px 32px; border:none; border-radius:999px;
+    font-family:inherit; font-weight:700; font-size:15px; color:#fff;
+    background:var(--blue); box-shadow:0 6px 14px rgba(74,156,199,0.4); cursor:pointer;
+  }
+  .btn:active{ transform:scale(0.95); }
+
+  .hint-bar{
+    position:absolute; bottom:calc(env(safe-area-inset-bottom,0) + 18px);
+    left:0; right:0; text-align:center; z-index:5;
+    font-size:clamp(11px,3.2vw,13px); color:var(--ink-soft); font-weight:500;
+    animation:pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse{ 0%,100%{opacity:0.5;} 50%{opacity:1;} }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">幸運餅乾</div>
+  <div class="subtitle">點一顆餅乾，看看今天的籤詩</div>
+  <div id="field"></div>
+  <div class="hint-bar">餅乾們正在到處飄，隨便挑一顆吧 🥠</div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="reveal-card">
+    <div class="scene-wrap">
+      <div class="scene-inner">
+        <div class="fortune-paper"><div class="fortune-label">若若的<br>幸運餅乾</div></div>
+        <div class="cookie-container reveal-cookie">
+          <div class="cookie-back"></div>
+          <div class="cookie-front">
+            <div class="face">
+              <div class="eye eye-left"></div>
+              <div class="eye eye-right"></div>
+              <div class="blush blush-left"></div>
+              <div class="blush blush-right"></div>
+              <div class="mouth"></div>
+            </div>
+            <div class="cookie-bottom-indent"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="reveal-text" id="fortuneText"></div>
+    <button class="btn" id="closeBtn">再挑一顆</button>
+  </div>
+</div>
+
+<script>
+function fixHeight(){
+  const h = window.innerHeight;
+  document.getElementById('app').style.height = h + 'px';
+  document.getElementById('app').style.minHeight = h + 'px';
+}
+fixHeight();
+window.addEventListener('resize', fixHeight);
+window.addEventListener('orientationchange', ()=>setTimeout(fixHeight,150));
+
+const FORTUNES = [
+  "決定好了就去做吧！我支持你ㄛ",
+  "你很棒～把自己照顧得很好唷",
+  "恭喜！明天會發生一件讓你開心的事情～",
+  "獲得一瓶福靈劑，快喝下它吧～",
+  "放心，你所經歷的一切都會有收穫唷～",
+];
+
+const field = document.getElementById('field');
+const overlay = document.getElementById('overlay');
+const fortuneText = document.getElementById('fortuneText');
+const closeBtn = document.getElementById('closeBtn');
+
+let W, H;
+function measure(){ W = field.clientWidth; H = field.clientHeight; }
+
+const COOKIE_COUNT = 15;
+const cookies = [];
+
+function rand(min,max){ return Math.random()*(max-min)+min; }
+
+const MINI_MARKUP = `
+  <div class="mini-inner">
+    <div class="cookie-container">
+      <div class="cookie-back"></div>
+      <div class="cookie-front">
+        <div class="face">
+          <div class="eye eye-left"></div>
+          <div class="eye eye-right"></div>
+          <div class="blush blush-left"></div>
+          <div class="blush blush-right"></div>
+          <div class="mouth"></div>
+        </div>
+        <div class="cookie-bottom-indent"></div>
+      </div>
+    </div>
+  </div>`;
+
+function buildCookie(){
+  const el = document.createElement('div');
+  el.className = 'fcookie';
+  el.innerHTML = MINI_MARKUP;
+  field.appendChild(el);
+  return el;
+}
+
+function initCookies(){
+  measure();
+  for(let i=0;i<COOKIE_COUNT;i++){
+    const el = buildCookie();
+    const scale = rand(0.82,1.15);
+    el.style.width = (66*scale)+'px';
+    el.style.height = (58*scale)+'px';
+    const obj = {
+      el,
+      x: rand(4, Math.max(10,W-70)),
+      y: rand(58, Math.max(80,H-140)),
+      vx: rand(-0.16,0.16) || 0.08,
+      vy: rand(-0.12,0.12) || 0.06,
+      frozen:false,
+    };
+    if(Math.abs(obj.vx) < 0.05) obj.vx = 0.08;
+    if(Math.abs(obj.vy) < 0.05) obj.vy = 0.06;
+    el.addEventListener('click', ()=>onPick(obj));
+    cookies.push(obj);
+  }
+  requestAnimationFrame(tick);
+}
+
+function tick(){
+  measure();
+  for(const c of cookies){
+    if(c.frozen) continue;
+    c.x += c.vx; c.y += c.vy;
+    const w = c.el.offsetWidth, h = c.el.offsetHeight;
+    if(c.x < 2 || c.x > W - w - 2) c.vx *= -1;
+    if(c.y < 54 || c.y > H - h - 78) c.vy *= -1;
+    c.x = Math.max(2, Math.min(W-w-2, c.x));
+    c.y = Math.max(54, Math.min(H-h-78, c.y));
+    c.el.style.transform = `translate(${c.x}px, ${c.y}px)`;
+  }
+  requestAnimationFrame(tick);
+}
+
+let lastFortune = -1;
+function pickFortune(){
+  let i;
+  do{ i = Math.floor(Math.random()*FORTUNES.length); } while(FORTUNES.length>1 && i===lastFortune);
+  lastFortune = i;
+  return FORTUNES[i];
+}
+
+function onPick(obj){
+  if(obj.frozen) return;
+  obj.frozen = true;
+  obj.el.classList.add('cracking');
+  fortuneText.textContent = pickFortune();
+
+  setTimeout(()=>{
+    obj.el.classList.add('hide');
+    overlay.classList.add('show');
+  }, 320);
+}
+
+closeBtn.addEventListener('click', ()=>{
+  overlay.classList.remove('show');
+  const c = cookies.find(c => c.el.classList.contains('hide'));
+  setTimeout(()=>{
+    if(c){
+      c.el.classList.remove('hide','cracking');
+      c.frozen = false;
+    }
+  }, 300);
+});
+
+initCookies();
+</script>
+</body>
+</html>
